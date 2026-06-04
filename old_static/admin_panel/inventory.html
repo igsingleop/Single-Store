@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Store Admin - Inventory</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../shared/css/base.css">
+    <link rel="stylesheet" href="./css/admin.css">
+    <style>
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        input,
+        select,
+        textarea {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            color: var(--text-light);
+            font-family: var(--font-body);
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .btn-submit {
+            background: var(--primary-color);
+            color: #ffffff;
+            padding: 1rem 2rem;
+            font-weight: 700;
+            border-radius: var(--radius-sm);
+            transition: opacity var(--transition-fast);
+        }
+
+        .btn-submit:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <i class="fas fa-times admin-close-sidebar" onclick="toggleAdminSidebar()" style="display:none; position: absolute; top: 1.5rem; right: 1.5rem; font-size: 1.2rem; cursor: pointer;"></i>
+            <div class="brand">Single Store.</div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="inventory.html" class="nav-link active">
+                    <i class="fas fa-images"></i> Inventory
+                </a>
+                <a href="orders.html" class="nav-link">
+                    <i class="fas fa-shopping-bag"></i> Orders
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="../storefront/index.html" target="_blank"><i class="fas fa-external-link-alt"></i> View
+                    Store</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div style="display: flex; align-items: center;">
+                    <i class="fas fa-bars admin-menu-toggle" onclick="toggleAdminSidebar()" style="display:none; font-size: 1.5rem; cursor: pointer; margin-right: 1rem;"></i>
+                    <h1 class="topbar-title">Manage Inventory</h1>
+                </div>
+                <div class="admin-profile">
+                    <span class="admin-name">Deepak Admin</span>
+                    <div class="admin-avatar">D</div>
+                </div>
+            </header>
+
+            <section class="glass-panel" style="padding: 2rem; margin-bottom: 3rem;">
+                <h2 class="section-title" id="formTitle">Add New Poster</h2>
+                <form id="inventoryForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="posterTitle" required placeholder="e.g. Iron Man Minimalist">
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="posterCategory" required>
+                                <option value="Kollywood">Kollywood</option>
+                                <option value="TV Series">TV Series</option>
+                                <option value="Hollywood">Hollywood</option>
+                                <option value="Cars">Cars</option>
+                                <option value="Motivation">Motivation</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Price (₹)</label>
+                            <input type="number" step="0.01" id="posterPrice" required placeholder="24.99">
+                        </div>
+                        <div class="form-group">
+                            <label>Discount Price (₹)</label>
+                            <input type="number" step="0.01" id="posterDiscountPrice" placeholder="19.99">
+                        </div>
+                        <div class="form-group">
+                            <label>Upload Image</label>
+                            <input type="file" id="posterImageFile" accept="image/*">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Description</label>
+                            <textarea id="posterDesc" rows="3" placeholder="Description of the poster..."></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-submit">Add Poster to Store</button>
+                </form>
+            </section>
+
+            <section>
+                <h2 class="section-title">Current Posters</h2>
+                <div class="glass-panel" style="padding: 1.5rem; overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTableBody">
+                            <!-- JS populates -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="../shared/js/db.js"></script>
+    <script src="./js/admin.js"></script>
+</body>
+
+</html>

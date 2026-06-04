@@ -1,0 +1,128 @@
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, Eye, Filter } from 'lucide-react';
+import PosterCard from './PosterCard';
+
+export default function ShopView({ posters, searchQuery, onSelectPoster, onAddToCart }) {
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // Extract all categories dynamically from posters
+  const categories = useMemo(() => {
+    const cats = posters.map(p => p.category);
+    const uniqueCats = ['All', ...new Set(cats.filter(Boolean))];
+    return uniqueCats;
+  }, [posters]);
+
+  // Filter posters by search and category
+  const filteredPosters = useMemo(() => {
+    return posters.filter(p => {
+      const matchCategory = selectedCategory === 'All' || p.category === selectedCategory;
+      const matchSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchCategory && matchSearch;
+    });
+  }, [posters, selectedCategory, searchQuery]);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.08
+      }
+    }
+  };
+
+  return (
+    <div className="w-full max-w-7xl mx-auto px-6 py-12">
+      {/* Page Header */}
+      <div className="text-center mb-10">
+        <h2 className="font-outfit text-3xl md:text-5xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
+          Shop Our Collections
+        </h2>
+        <p className="text-zinc-500 dark:text-zinc-400 mt-2 text-sm md:text-base max-w-lg mx-auto">
+          Explore premium posters. Select a category below to discover artwork curated for your space.
+        </p>
+      </div>
+
+      {/* Category Navigation (Neomorphic Pills) */}
+      <div className="flex flex-wrap items-center justify-center gap-3 mb-12">
+        {categories.map((cat) => {
+          const isActive = selectedCategory === cat;
+          return (
+            <motion.button
+              key={cat}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-6 py-2.5 rounded-full font-medium text-sm border transition-all duration-300 ${
+                isActive
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20'
+                  : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 shadow-neo-out hover:shadow-neo-in'
+              }`}
+            >
+              {cat}
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Product Display count */}
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+        <span className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+          Showing {filteredPosters.length} {filteredPosters.length === 1 ? 'Poster' : 'Posters'}
+        </span>
+        {searchQuery && (
+          <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+            Filtered by search: "{searchQuery}"
+          </span>
+        )}
+      </div>
+
+      {/* Product Grid */}
+      <AnimatePresence mode="wait">
+        {filteredPosters.length > 0 ? (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            key={selectedCategory + searchQuery}
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+          >
+            {filteredPosters.map((poster) => (
+              <PosterCard
+                key={poster.id}
+                poster={poster}
+                onSelect={onSelectPoster}
+                onAddToCart={onAddToCart}
+              />
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="text-center py-16 glass-panel rounded-3xl p-8 border border-zinc-200 dark:border-zinc-800"
+          >
+            <div className="text-4xl mb-4">🎨</div>
+            <h3 className="font-outfit text-xl font-bold text-zinc-800 dark:text-white">
+              No matching posters found
+            </h3>
+            <p className="text-zinc-500 dark:text-zinc-400 mt-2 text-sm">
+              Try adjusting your filter category or search keywords.
+            </p>
+            <button
+              onClick={() => {
+                setSelectedCategory('All');
+              }}
+              className="mt-6 px-6 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-500 transition-colors"
+            >
+              Reset Filters
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Store Admin - Dashboard</title>
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS -->
+    <link rel="stylesheet" href="../shared/css/base.css">
+    <link rel="stylesheet" href="./css/admin.css">
+</head>
+
+<body>
+
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <i class="fas fa-times admin-close-sidebar" onclick="toggleAdminSidebar()" style="display:none; position: absolute; top: 1.5rem; right: 1.5rem; font-size: 1.2rem; cursor: pointer;"></i>
+            <div class="brand">Single Store.</div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link active">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="inventory.html" class="nav-link">
+                    <i class="fas fa-images"></i> Inventory
+                </a>
+                <a href="orders.html" class="nav-link">
+                    <i class="fas fa-shopping-bag"></i> Orders
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="../storefront/index.html" target="_blank"><i class="fas fa-external-link-alt"></i> View
+                    Store</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <div style="display: flex; align-items: center;">
+                    <i class="fas fa-bars admin-menu-toggle" onclick="toggleAdminSidebar()" style="display:none; font-size: 1.5rem; cursor: pointer; margin-right: 1rem;"></i>
+                    <h1 class="topbar-title">Dashboard Overview</h1>
+                </div>
+                <div class="admin-profile">
+                    <span class="admin-name">Deepak Admin</span>
+                    <div class="admin-avatar">D</div>
+                </div>
+            </header>
+
+            <!-- Dashboard Stats -->
+            <section class="stats-grid">
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon"><i class="fas fa-rupee-sign"></i></div>
+                    <div class="stat-details">
+                        <p>Total Revenue</p>
+                        <h3 id="statRevenue">Rs. 0.00</h3>
+                    </div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon"><i class="fas fa-shopping-cart"></i></div>
+                    <div class="stat-details">
+                        <p>Total Orders</p>
+                        <h3 id="statOrders">0</h3>
+                    </div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon"><i class="fas fa-image"></i></div>
+                    <div class="stat-details">
+                        <p>Active Posters</p>
+                        <h3 id="statPosters">0</h3>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Orders -->
+            <section id="dashboardRecentOrders">
+                <h2 class="section-title">Recent Orders</h2>
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentOrdersBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- DB Logic and Admin Logic -->
+    <script src="../shared/js/db.js"></script>
+    <script src="./js/admin.js"></script>
+</body>
+
+</html>

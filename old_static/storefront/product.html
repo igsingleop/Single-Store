@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details | Single Store</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../shared/css/base.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <style>
+        .product-section {
+            padding: 4rem 5%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .product-image {
+            background: #f8f8f8;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .product-image img {
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-info {
+            padding-top: 1rem;
+        }
+
+        .vendor-badge {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .product-info h1 {
+            font-size: 2.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .product-price {
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .product-desc {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 2rem;
+        }
+
+        .options-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .options-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .options-group select {
+            width: 100%;
+            padding: 0.8rem;
+            background: var(--bg-light);
+            border: 1px solid var(--text-dark);
+            color: var(--text-dark);
+            border-radius: 0;
+            font-family: var(--font-body);
+            cursor: pointer;
+        }
+
+        .add-btn {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+            margin-top: 1rem;
+            border-radius: 0;
+            /* Boxy aesthetic */
+        }
+
+        @media (max-width: 768px) {
+            .product-section {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+        }
+    </style>
+</head>
+
+<body id="productDetail">
+
+    <div class="announcement-bar">
+        <div class="announcement-marquee">
+            <span>Buy 2 Get 1 Free. Use Code SS01. Free Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free.
+                Use Code SS01. Free Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free. Use Code SS01. Free
+                Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free. Use Code SS01. Free Shipping In India.
+                &nbsp;&nbsp;|&nbsp;&nbsp; </span>
+            <span>Buy 2 Get 1 Free. Use Code SS01. Free Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free.
+                Use Code SS01. Free Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free. Use Code SS01. Free
+                Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free. Use Code SS01. Free Shipping In India.
+                &nbsp;&nbsp;|&nbsp;&nbsp; </span>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+        <a href="index.html" class="nav-brand">Single Store.</a>
+        <div class="nav-links">
+            <i class="fas fa-times close-menu" onclick="toggleMenu()" style="position: absolute; top: 2rem; right: 2rem; font-size: 1.5rem; cursor: pointer;"></i>
+            <a href="index.html">Home</a>
+            <a href="shop.html">Shop All</a>
+        </div>
+        <div class="nav-actions">
+            <i class="fas fa-bars menu-toggle" onclick="toggleMenu()"></i>
+            <i class="fas fa-search"></i>
+            <a href="account.html"><i class="fas fa-user"></i></a>
+            <div class="cart-icon" onclick="toggleCart()">
+                <i class="fas fa-shopping-bag"></i>
+                <span class="cart-count" id="cartCount">0</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="product-section">
+        <div class="product-image">
+            <img id="prodImg" src="https://via.placeholder.com/600x800" alt="Poster">
+        </div>
+        <div class="product-info">
+            <div class="vendor-badge" id="prodVendor">Single Store</div>
+            <h1 id="prodTitle">Loading...</h1>
+            <div class="product-price" id="prodPrice">Rs. 0.00</div>
+
+            <div class="options-group">
+                <label>Size</label>
+                <select id="prodSize">
+                    <option value="12x18&quot; (A3)">12x18" (A3)</option>
+                    <option value="18x24&quot;" selected>18x24"</option>
+                    <option value="24x36&quot;">24x36"</option>
+                </select>
+            </div>
+
+            <div class="options-group">
+                <label>Frame Style</label>
+                <select id="prodFrame">
+                    <option value="Print Only" selected>Print Only (Unframed)</option>
+                    <option value="Black Frame">Black Core Frame</option>
+                    <option value="White Frame">White Core Frame</option>
+                </select>
+            </div>
+
+            <button class="btn add-btn" id="btnAddToCartForm">Add to cart</button>
+            <p style="text-align:center; font-size: 0.8rem; margin-top: 1rem;">Pickup available at Single Store HQ</p>
+
+            <div class="product-desc" id="prodDesc">
+                Loading description...
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <!-- Exact same cart sidebar HTML -->
+        <div class="cart-header">
+            <h3>Cart</h3>
+            <i class="fas fa-times close-cart" onclick="toggleCart()"></i>
+        </div>
+        <div class="cart-items" id="cartItemsContainer"></div>
+        <div class="cart-footer">
+            <div class="cart-total"><span>Subtotal</span><span id="cartTotalSum">Rs. 0.00</span></div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; text-align: center;">Taxes and
+                shipping calculated at checkout</p>
+            <a href="cart.html" class="btn" style="width: 100%; text-align: center;">Check out</a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer" style="margin-top: 4rem;">
+        <div class="footer-bottom">
+            <div>&copy; 2026, SingleStore.in</div>
+        </div>
+    </footer>
+
+    <script src="../shared/js/db.js"></script>
+    <script src="./js/app.js"></script>
+</body>
+
+</html>

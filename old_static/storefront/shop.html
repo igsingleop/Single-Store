@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products – Single Store</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../shared/css/base.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <style>
+        .shop-header {
+            padding: 4rem 5% 2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .filter-btn {
+            color: var(--text-dark);
+            text-transform: uppercase;
+            font-weight: 500;
+            cursor: pointer;
+            padding-bottom: 4px;
+        }
+
+        .filter-btn:hover {
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="announcement-bar">
+        <div class="announcement-marquee">
+            <span>Buy 2 Get 1 Free. Use Code SS01. Free Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free.
+                Use Code SS01. Free Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free. Use Code SS01. Free
+                Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free. Use Code SS01. Free Shipping In India.
+                &nbsp;&nbsp;|&nbsp;&nbsp; </span>
+            <span>Buy 2 Get 1 Free. Use Code SS01. Free Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free.
+                Use Code SS01. Free Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free. Use Code SS01. Free
+                Shipping In India. &nbsp;&nbsp;|&nbsp;&nbsp; Buy 2 Get 1 Free. Use Code SS01. Free Shipping In India.
+                &nbsp;&nbsp;|&nbsp;&nbsp; </span>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar" id="navbar">
+        <a href="index.html" class="nav-brand">Single Store.</a>
+        <div class="nav-links">
+            <i class="fas fa-times close-menu" onclick="toggleMenu()" style="position: absolute; top: 2rem; right: 2rem; font-size: 1.5rem; cursor: pointer;"></i>
+            <a href="index.html">Home</a>
+            <a href="shop.html" style="text-decoration: underline; text-underline-offset: 4px;">Shop All</a>
+            <a href="shop.html?cat=Top Sellers">Top Sellers</a>
+            <a href="shop.html?cat=New Arraivals">New Arraivals</a>
+        </div>
+        <div class="nav-actions">
+            <i class="fas fa-bars menu-toggle" onclick="toggleMenu()"></i>
+            <i class="fas fa-search"></i>
+            <a href="account.html"><i class="fas fa-user"></i></a>
+            <div class="cart-icon" onclick="toggleCart()">
+                <i class="fas fa-shopping-bag"></i>
+                <span class="cart-count" id="cartCount">0</span>
+            </div>
+        </div>
+    </nav>
+
+    <header class="shop-header">
+        <h1>Products</h1>
+        <div class="filter-bar" style="align-items: center;">
+            <span style="font-weight: 500;">Filter by:</span>
+            <select id="categorySelect"
+                onchange="window.location.href='shop.html?cat=' + encodeURIComponent(this.value)"
+                style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-family: var(--font-body); outline: none; background: #fff; cursor: pointer; min-width: 150px;">
+                <option value="All">All Categories</option>
+                <option value="Kollywood">Kollywood</option>
+                <option value="TV Series">TV Series</option>
+                <option value="Hollywood">Hollywood</option>
+                <option value="Cars">Cars</option>
+                <option value="Motivation">Motivation</option>
+                <option value="Top Sellers">Top Sellers</option>
+                <option value="New Arraivals">New Arraivals</option>
+            </select>
+        </div>
+    </header>
+
+    <section class="section">
+        <div class="poster-grid" id="shopGrid">
+            <!-- JS populates -->
+        </div>
+    </section>
+
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <!-- Exact same cart sidebar HTML -->
+        <div class="cart-header">
+            <h3>Cart</h3>
+            <i class="fas fa-times close-cart" onclick="toggleCart()"></i>
+        </div>
+        <div class="cart-items" id="cartItemsContainer"></div>
+        <div class="cart-footer">
+            <div class="cart-total"><span>Subtotal</span><span id="cartTotalSum">Rs. 0.00</span></div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; text-align: center;">Taxes and
+                shipping calculated at checkout</p>
+            <a href="cart.html" class="btn" style="width: 100%; text-align: center;">Check out</a>
+        </div>
+    </div>
+
+    <!-- Shared DB and Logic -->
+    <script src="../shared/js/db.js"></script>
+    <script src="./js/app.js"></script>
+</body>
+
+</html>

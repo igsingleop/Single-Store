@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout – Single Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../shared/css/base.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <style>
+        .checkout-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 4rem 5% 5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+        }
+        .form-panel h2 {
+            font-size: 1.4rem;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-dark);
+            font-family: var(--font-body);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .summary-panel {
+            background: #fafafa;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+        }
+        .summary-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .summary-item img {
+            width: 60px;
+            height: 80px;
+            object-fit: cover;
+            border: 1px solid var(--border-color);
+            margin-right: 1rem;
+            background: #fff;
+        }
+        .summary-item-details {
+            flex: 1;
+        }
+        .summary-item-title {
+            font-weight: 500;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+        .summary-item-price {
+            font-weight: 600;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--text-dark);
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+        @media (max-width: 768px) {
+            .checkout-container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body style="background: #fff;">
+
+    <header style="text-align: center; padding: 2rem; border-bottom: 1px solid var(--border-color);">
+        <a href="index.html" class="nav-brand" style="font-size: 2.5rem;">Single Store.</a>
+    </header>
+
+    <section class="checkout-container">
+        <div class="form-panel">
+            <h2>Contact information</h2>
+            <form id="checkoutForm">
+                <div class="form-group">
+                    <input type="email" id="email" placeholder="Email" required>
+                </div>
+                
+                <h2 style="margin-top: 2rem;">Shipping address</h2>
+                <div class="form-group">
+                    <input type="text" placeholder="Country/Region" value="India" disabled style="background:#f4f4f4;">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" id="fname" placeholder="First name" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="lname" placeholder="Last name" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="address" placeholder="Address" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" placeholder="City" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" placeholder="PIN code" required>
+                    </div>
+                </div>
+
+                <h2 style="margin-top: 2rem;">Payment</h2>
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Secure payment via Razorpay.</p>
+                
+                <button type="submit" class="btn" style="width: 100%; margin-top: 2rem; padding: 1.2rem; font-size: 1rem; background-color: #3395FF; color: white;">Pay with Razorpay</button>
+            </form>
+        </div>
+
+        <div class="summary-panel">
+            <div id="checkoutItems">
+                <!-- JS populated -->
+            </div>
+            <div class="total-row">
+                <span>Total</span>
+                <span id="checkoutTotal">Rs. 0.00</span>
+            </div>
+        </div>
+    </section>
+
+    <script src="../shared/js/db.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const cart = window.db.getCart();
+            const itemsContainer = document.getElementById('checkoutItems');
+            const totalEl = document.getElementById('checkoutTotal');
+            
+            if(cart.length === 0) {
+                itemsContainer.innerHTML = 'Cart is empty.';
+                document.querySelector('button[type="submit"]').disabled = true;
+                return;
+            }
+
+            let total = 0;
+            itemsContainer.innerHTML = cart.map(item => {
+                total += item.price;
+                return `
+                    <div class="summary-item">
+                        <img src="${item.image}" alt="${item.title}">
+                        <div class="summary-item-details">
+                            <div class="summary-item-title">${item.title}</div>
+                            <div style="font-size:0.8rem; color:#666; margin-bottom:0.25rem;">${item.size} / ${item.frame}</div>
+                            <div class="summary-item-price">Rs. ${item.price.toFixed(2)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            totalEl.innerText = `Rs. ${total.toFixed(2)}`;
+
+            document.getElementById('checkoutForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const fname = document.getElementById('fname').value;
+                const lname = document.getElementById('lname').value;
+                const email = document.getElementById('email').value;
+                
+                var options = {
+                    "key": "rzp_test_YOUR_KEY_HERE", // Replace with actual Razorpay Key
+                    "amount": Math.round(total * 100), 
+                    "currency": "INR",
+                    "name": "Single Store",
+                    "description": "Poster Purchase",
+                    "image": "https://via.placeholder.com/150?text=Logo",
+                    "handler": function (response){
+                        const newOrder = {
+                            id: response.razorpay_payment_id || Math.floor(Math.random() * 100000).toString(),
+                            customerName: `${fname} ${lname}`,
+                            customerEmail: email,
+                            date: new Date().toISOString(),
+                            items: cart,
+                            total: total,
+                            status: 'Pending'
+                        };
+                        
+                        window.db.addOrder(newOrder);
+                        window.db.saveCart([]); // clear cart
+                        
+                        alert(`Payment Successful! Order Confirmed: ${newOrder.id}`);
+                        window.location.href = 'index.html';
+                    },
+                    "prefill": {
+                        "name": `${fname} ${lname}`,
+                        "email": email,
+                        "contact": "9999999999"
+                    },
+                    "theme": {
+                        "color": "#000000"
+                    }
+                };
+
+                try {
+                    var rzp1 = new Razorpay(options);
+                    rzp1.on('payment.failed', function (response){
+                            alert("Payment Failed. Reason: " + response.error.description);
+                    });
+                    rzp1.open();
+                } catch(err) {
+                    console.warn("Razorpay script error or missing key:", err);
+                    // Fallback to mock behavior if SDK fails to load or key is invalid
+                    if(confirm("Razorpay key is missing or invalid. Complete order in mock mode?")) {
+                        options.handler({ razorpay_payment_id: "mock_pay_" + Math.floor(Math.random() * 1000) });
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

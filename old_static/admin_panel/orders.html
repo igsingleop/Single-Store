@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Store Admin - Orders</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../shared/css/base.css">
+    <link rel="stylesheet" href="./css/admin.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <i class="fas fa-times admin-close-sidebar" onclick="toggleAdminSidebar()" style="display:none; position: absolute; top: 1.5rem; right: 1.5rem; font-size: 1.2rem; cursor: pointer;"></i>
+            <div class="brand">Single Store.</div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="inventory.html" class="nav-link">
+                    <i class="fas fa-images"></i> Inventory
+                </a>
+                <a href="orders.html" class="nav-link active">
+                    <i class="fas fa-shopping-bag"></i> Orders
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="../storefront/index.html" target="_blank"><i class="fas fa-external-link-alt"></i> View Store</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div style="display: flex; align-items: center;">
+                    <i class="fas fa-bars admin-menu-toggle" onclick="toggleAdminSidebar()" style="display:none; font-size: 1.5rem; cursor: pointer; margin-right: 1rem;"></i>
+                    <h1 class="topbar-title">Order Management</h1>
+                </div>
+                <div class="admin-profile">
+                    <span class="admin-name">Deepak Admin</span>
+                    <div class="admin-avatar">D</div>
+                </div>
+            </header>
+
+            <section>
+                <div class="glass-panel" style="padding: 1.5rem; overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer Info</th>
+                                <th>Date</th>
+                                <th>Total & Items</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <!-- JS populates -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="../shared/js/db.js"></script>
+    <script src="./js/admin.js"></script>
+</body>
+</html>
