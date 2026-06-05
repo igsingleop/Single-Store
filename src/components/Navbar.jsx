@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Moon, ShoppingBag, User, Search, Menu, X, ShieldAlert } from 'lucide-react';
+import { Sun, Moon, ShoppingBag, User, Search, Menu, X } from 'lucide-react';
 
 export default function Navbar({
   currentView,
@@ -61,15 +61,6 @@ export default function Navbar({
         >
           My Account
         </button>
-        <a
-          href="http://localhost:5174/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium flex items-center space-x-1.5 transition-colors text-zinc-600 dark:text-zinc-300 hover:text-blue-500"
-        >
-          <ShieldAlert className="w-4 h-4" />
-          <span>Admin Portal</span>
-        </a>
       </div>
 
       {/* Search Input - Desktop */}
@@ -190,15 +181,6 @@ export default function Navbar({
             >
               My Account
             </button>
-            <a
-              href="http://localhost:5174/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-left py-2 font-medium flex items-center space-x-2 text-zinc-700 dark:text-zinc-300"
-            >
-              <ShieldAlert className="w-4 h-4" />
-              <span>Admin Portal</span>
-            </a>
           </motion.div>
         )}
       </AnimatePresence>

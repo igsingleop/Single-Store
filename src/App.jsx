@@ -56,9 +56,16 @@ export default function App() {
       setPosters(dbPosters);
       setCart(getCart());
     };
+    const handleStorageChange = (e) => {
+      if (e.key === 'SINGLESTORE_POSTERS' || e.key === 'SINGLESTORE_ORDERS') {
+        handleDbUpdate();
+      }
+    };
     window.addEventListener('singlestore_db_update', handleDbUpdate);
+    window.addEventListener('storage', handleStorageChange);
     return () => {
       window.removeEventListener('singlestore_db_update', handleDbUpdate);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
@@ -122,7 +129,6 @@ export default function App() {
 
   const handleCheckoutTrigger = () => {
     setView('checkout');
-    setIsAdminMode(false);
   };
 
   const handleOrderConfirmed = (order) => {
@@ -360,11 +366,7 @@ export default function App() {
                   Client Account
                 </button>
               </li>
-              <li>
-                <a href="http://localhost:5174/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors block">
-                  Admin Portal Dashboard
-                </a>
-              </li>
+
             </ul>
           </div>
 

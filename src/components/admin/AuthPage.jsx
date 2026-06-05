@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight, ArrowLeft, ShieldCheck, HelpCircle, AlertTriangle } from 'lucide-react';
-import { getAdmins, registerAdmin } from '../utils/db';
+import { getAdmins, registerAdmin } from '../../utils/db';
 
 export default function AuthPage({ onLoginSuccess }) {
   const [authTab, setAuthTab] = useState('login');
@@ -266,7 +266,7 @@ export default function AuthPage({ onLoginSuccess }) {
         {/* Return to Shop link */}
         <div className="text-center">
           <a
-            href="http://localhost:5173/"
+            href="/"
             className="inline-flex items-center space-x-1.5 text-xs text-zinc-400 dark:text-zinc-500 hover:text-blue-500 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -277,5 +277,3 @@ export default function AuthPage({ onLoginSuccess }) {
     </div>
   );
 }
-
-

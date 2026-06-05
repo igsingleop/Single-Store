@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body>
+  <script>
+    // Allow only requests from localhost ports (default for Vite dev server)
+    const ALLOWED_ORIGINS = [
+      'http://localhost:5173',
+      'http://localhost:5174'
+    ];
+
+    window.addEventListener('message', (event) => {
+      // Validate origin to ensure it's either in ALLOWED_ORIGINS or a localhost port
+      if (!event.origin.startsWith('http://localhost') && !ALLOWED_ORIGINS.includes(event.origin)) {
+        return;
+      }
+
+      const message = event.data;
+      if (!message || typeof message !== 'object') return;
+
+      switch (message.type) {
+        case 'GET_STORE_DATA': {
+          const posters = localStorage.getItem('SINGLESTORE_POSTERS');
+          const orders = localStorage.getItem('SINGLESTORE_ORDERS');
+          const admins = localStorage.getItem('SINGLESTORE_ADMIN_USERS');
+          event.source.postMessage({
+            type: 'STORE_DATA_RESPONSE',
+            posters: posters ? JSON.parse(posters) : null,
+            orders: orders ? JSON.parse(orders) : null,
+            admins: admins ? JSON.parse(admins) : null
+          }, event.origin);
+          break;
+        }
+        case 'SET_STORE_DATA': {
+          if (message.key && message.value !== undefined) {
+            localStorage.setItem(message.key, JSON.stringify(message.value));
+            // Trigger storage update event inside the storefront so open storefront tabs update
+            window.dispatchEvent(new Event('singlestore_db_update'));
+          }
+          break;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

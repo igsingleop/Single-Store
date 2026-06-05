@@ -13,6 +13,7 @@ import {
 const DB_POSTERS_KEY = 'SINGLESTORE_POSTERS';
 const DB_ORDERS_KEY = 'SINGLESTORE_ORDERS';
 const DB_CART_KEY = 'SINGLESTORE_CART';
+const ADMIN_USERS_KEY = 'SINGLESTORE_ADMIN_USERS';
 
 const defaultPosters = [
   {
@@ -49,6 +50,14 @@ const defaultPosters = [
   }
 ];
 
+const defaultAdmins = [
+  {
+    name: 'Super Admin',
+    email: 'admin@singlestore.in',
+    password: 'admin123'
+  }
+];
+
 function safeParse(key, fallback) {
   try {
     const data = localStorage.getItem(key);
@@ -76,6 +85,16 @@ export async function initDB() {
         }
         window.dispatchEvent(new Event('singlestore_db_update'));
       }
+
+      // Seed default admin accounts if collection is empty
+      const adminsQ = query(collection(firestoreDb, 'admins'));
+      const adminsSnapshot = await getDocs(adminsQ);
+      if (adminsSnapshot.empty) {
+        console.log("Seeding default admin into Firestore...");
+        for (const admin of defaultAdmins) {
+          await setDoc(doc(firestoreDb, 'admins', admin.email.toLowerCase()), admin);
+        }
+      }
     } catch (e) {
       console.error("Firestore DB initialization / seeding error:", e);
     }
@@ -86,6 +105,9 @@ export async function initDB() {
     }
     if (!localStorage.getItem(DB_ORDERS_KEY)) {
       localStorage.setItem(DB_ORDERS_KEY, JSON.stringify([]));
+    }
+    if (!localStorage.getItem(ADMIN_USERS_KEY)) {
+      localStorage.setItem(ADMIN_USERS_KEY, JSON.stringify(defaultAdmins));
     }
   }
 
@@ -267,4 +289,46 @@ export function getCart() {
 export function saveCart(cart) {
   localStorage.setItem(DB_CART_KEY, JSON.stringify(cart));
   window.dispatchEvent(new Event('singlestore_db_update'));
+}
+
+// --- Admin Credentials / Auth Operations ---
+export async function getAdmins() {
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      const snapshot = await getDocs(collection(firestoreDb, 'admins'));
+      const list = [];
+      snapshot.forEach(doc => {
+        list.push(doc.data());
+      });
+      return list;
+    } catch (e) {
+      console.error("Firestore getAdmins error:", e);
+      return safeParse(ADMIN_USERS_KEY, defaultAdmins);
+    }
+  } else {
+    return safeParse(ADMIN_USERS_KEY, defaultAdmins);
+  }
+}
+
+export async function registerAdmin(admin) {
+  const emailLower = admin.email.toLowerCase();
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      await setDoc(doc(firestoreDb, 'admins', emailLower), {
+        name: admin.name,
+        email: emailLower,
+        password: admin.password
+      });
+    } catch (e) {
+      console.error("Firestore registerAdmin error:", e);
+    }
+  } else {
+    const admins = safeParse(ADMIN_USERS_KEY, defaultAdmins);
+    admins.push({
+      name: admin.name,
+      email: emailLower,
+      password: admin.password
+    });
+    localStorage.setItem(ADMIN_USERS_KEY, JSON.stringify(admins));
+  }
 }

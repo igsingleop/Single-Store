@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Sun, Moon, ShieldAlert, LogOut, ArrowLeft } from 'lucide-react';
-import AuthPage from './components/AuthPage';
-import AdminPanel from './components/AdminPanel';
+import AuthPage from './components/admin/AuthPage';
+import AdminPanel from './components/admin/AdminPanel';
 
-export default function App() {
+export default function AdminApp() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -80,7 +80,7 @@ export default function App() {
 
             {/* Back to Storefront link */}
             <a
-              href="http://localhost:5173/"
+              href="/"
               className="text-xs font-bold bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 px-4 py-2.5 rounded-xl hover:shadow-neo-in shadow-neo-out flex items-center space-x-1.5 transition-all"
             >
               <ArrowLeft className="w-3.5 h-3.5" />

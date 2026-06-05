@@ -12,6 +12,8 @@ import {
   CheckCircle,
   FileText,
   Upload,
+  Download,
+  Database,
   AlertTriangle,
   LogOut,
   ArrowLeft
@@ -22,11 +24,13 @@ import {
   updatePoster,
   deletePoster,
   getOrders,
-  updateOrderStatus
-} from '../utils/db';
+  updateOrderStatus,
+  savePosters
+} from '../../utils/db';
 
 export default function AdminPanel({ session, onLogout }) {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Default to inventory management workspace
+  const [activeTab, setActiveTab] = useState('inventory');
   const [posters, setPosters] = useState([]);
   const [orders, setOrders] = useState([]);
 
@@ -38,6 +42,9 @@ export default function AdminPanel({ session, onLogout }) {
   const [posterDiscountPrice, setPosterDiscountPrice] = useState('');
   const [posterDesc, setPosterDesc] = useState('');
   const [posterImage, setPosterImage] = useState('');
+  
+  // Custom image input mode: file upload or external URL
+  const [imageInputMode, setImageInputMode] = useState('file'); // 'file' or 'url'
 
   useEffect(() => {
     // Initial fetch
@@ -85,13 +92,43 @@ export default function AdminPanel({ session, onLogout }) {
   const totalCategoryRevenue = Object.values(categorySales).reduce((a, b) => a + b, 0) || 1;
 
   // --- HANDLERS ---
+  // Client-side image compression using canvas
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (evt) => {
-      setPosterImage(evt.target.result);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 500;
+        const MAX_HEIGHT = 500;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Compress image to JPEG at 0.7 quality to conserve LocalStorage/memory quotas
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        setPosterImage(compressedBase64);
+      };
+      img.src = evt.target.result;
     };
     reader.readAsDataURL(file);
   };
@@ -152,6 +189,7 @@ export default function AdminPanel({ session, onLogout }) {
     setPosterDiscountPrice(p.discountPrice || '');
     setPosterDesc(p.description || '');
     setPosterImage(p.image || '');
+    setImageInputMode(p.image && p.image.startsWith('data:') ? 'file' : 'url');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -166,6 +204,62 @@ export default function AdminPanel({ session, onLogout }) {
     alert(`Order #${orderId} marked as ${newStatus}`);
   };
 
+  // --- BULK OPERATIONS ---
+  const handleBulkExport = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(posters, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `singlestore_inventory_${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const handleBulkImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const importedList = JSON.parse(evt.target.result);
+        if (!Array.isArray(importedList)) {
+          alert("Invalid import format. Expected an array of products.");
+          return;
+        }
+
+        // Validate structure
+        for (const item of importedList) {
+          if (!item.title || !item.category || item.price == null) {
+            alert("Each product must have a title, category, and price.");
+            return;
+          }
+          if (!item.id) {
+            item.id = Date.now().toString() + Math.random().toString(36).substring(2, 6);
+          }
+        }
+
+        if (window.confirm(`Are you sure you want to import ${importedList.length} products? This will merge with your current inventory.`)) {
+          const currentPosters = [...posters];
+          for (const item of importedList) {
+            const index = currentPosters.findIndex(p => String(p.id) === String(item.id));
+            if (index > -1) {
+              currentPosters[index] = item;
+            } else {
+              currentPosters.push(item);
+            }
+          }
+          await savePosters(currentPosters);
+          alert("Inventory imported successfully!");
+        }
+      } catch (err) {
+        alert("Failed to parse JSON file: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset file input
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto px-6 py-12 flex flex-col lg:flex-row gap-8">
       {/* Sidebar Navigation */}
@@ -173,24 +267,12 @@ export default function AdminPanel({ session, onLogout }) {
         
         {/* Profile overview */}
         <div className="hidden lg:block pb-4 mb-4 border-b border-zinc-200 dark:border-zinc-800 text-center">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-extrabold text-lg mx-auto mb-2 shadow-md">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-650 flex items-center justify-center text-white font-extrabold text-lg mx-auto mb-2 shadow-md">
             {session.name ? session.name.substring(0, 2).toUpperCase() : 'AD'}
           </div>
           <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">{session.name || 'Admin'}</span>
           <span className="text-[9px] text-zinc-400 font-semibold">{session.email}</span>
         </div>
-
-        <button
-          onClick={() => setActiveTab('dashboard')}
-          className={`flex-1 lg:flex-none px-4 py-3 rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2.5 transition-all duration-300 ${
-            activeTab === 'dashboard'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55'
-          }`}
-        >
-          <TrendingUp className="w-4 h-4" />
-          <span>Dashboard</span>
-        </button>
 
         <button
           onClick={() => setActiveTab('inventory')}
@@ -216,9 +298,21 @@ export default function AdminPanel({ session, onLogout }) {
           <span>Orders Manager</span>
         </button>
 
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex-1 lg:flex-none px-4 py-3 rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2.5 transition-all duration-300 ${
+            activeTab === 'dashboard'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4" />
+          <span>Dashboard</span>
+        </button>
+
         {/* Return to shop */}
         <a
-          href="http://localhost:5173/"
+          href="/"
           className="hidden lg:flex px-4 py-3 rounded-2xl font-bold text-xs md:text-sm items-center space-x-2.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55 mt-auto"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -320,7 +414,7 @@ export default function AdminPanel({ session, onLogout }) {
                 </div>
 
                 {/* Recent Orders table */}
-                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md lg:col-span-2 overflow-x-auto">
+                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md lg:col-span-2 overflow-x-auto font-sans">
                   <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
                     Recent Store Orders
                   </h3>
@@ -372,144 +466,232 @@ export default function AdminPanel({ session, onLogout }) {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="grid grid-cols-1 xl:grid-cols-3 gap-8"
+              className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start"
             >
-              {/* Left Side: Create/Edit Form */}
-              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md xl:col-span-1 h-fit">
-                <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
-                  {editingId ? 'Edit Product Poster' : 'Add New Poster'}
-                </h3>
-                <form onSubmit={handleFormSubmit} className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                      Poster Title *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Iron Man Mark L"
-                      value={posterTitle}
-                      onChange={(e) => setPosterTitle(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                      Category *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Marvel, DC, Motivation"
-                      value={posterCategory}
-                      onChange={(e) => setPosterCategory(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+              {/* Left Column (Create/Edit Form + Bulk Actions) */}
+              <div className="space-y-6 xl:col-span-1">
+                {/* Create/Edit Form */}
+                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md h-fit">
+                  <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
+                    {editingId ? 'Edit Product Poster' : 'Add New Poster'}
+                  </h3>
+                  <form onSubmit={handleFormSubmit} className="space-y-4">
                     <div>
                       <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                        Regular Price (₹) *
+                        Poster Title *
                       </label>
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
                         required
-                        placeholder="25.99"
-                        value={posterPrice}
-                        onChange={(e) => setPosterPrice(e.target.value)}
+                        placeholder="e.g. Iron Man Mark L"
+                        value={posterTitle}
+                        onChange={(e) => setPosterTitle(e.target.value)}
                         className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
                       />
                     </div>
+
                     <div>
                       <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                        Discount Price (₹)
+                        Category *
                       </label>
                       <input
-                        type="number"
-                        step="0.01"
-                        placeholder="19.99"
-                        value={posterDiscountPrice}
-                        onChange={(e) => setPosterDiscountPrice(e.target.value)}
+                        type="text"
+                        required
+                        placeholder="e.g. Marvel, DC, Motivation"
+                        value={posterCategory}
+                        onChange={(e) => setPosterCategory(e.target.value)}
                         className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
                       />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                      Poster Image *
-                    </label>
-                    <div className="relative group border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-blue-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                      {posterImage ? (
-                        <div className="text-center">
-                          <img
-                            src={posterImage}
-                            alt="Preview"
-                            className="w-16 h-20 object-cover rounded-md mx-auto mb-2 border border-zinc-200 dark:border-zinc-800 bg-white"
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                          Regular Price (₹) *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          placeholder="25.99"
+                          value={posterPrice}
+                          onChange={(e) => setPosterPrice(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                          Discount Price (₹)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="19.99"
+                          value={posterDiscountPrice}
+                          onChange={(e) => setPosterDiscountPrice(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Dual Image Input Mode */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                          Poster Image *
+                        </label>
+                        <div className="flex bg-zinc-100 dark:bg-zinc-850 rounded-lg p-0.5 text-[9px] font-bold">
+                          <button
+                            type="button"
+                            onClick={() => { setImageInputMode('file'); }}
+                            className={`px-2.5 py-1 rounded-md transition-all ${
+                              imageInputMode === 'file'
+                                ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-650 dark:text-blue-400'
+                                : 'text-zinc-500'
+                            }`}
+                          >
+                            Upload File
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setImageInputMode('url'); }}
+                            className={`px-2.5 py-1 rounded-md transition-all ${
+                              imageInputMode === 'url'
+                                ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-650 dark:text-blue-400'
+                                : 'text-zinc-500'
+                            }`}
+                          >
+                            Image URL
+                          </button>
+                        </div>
+                      </div>
+
+                      {imageInputMode === 'file' ? (
+                        <div className="relative group border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-blue-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                           />
-                          <span className="text-[9px] text-emerald-500 font-bold block">Image Uploaded</span>
+                          {posterImage && posterImage.startsWith('data:image/') ? (
+                            <div className="text-center">
+                              <img
+                                src={posterImage}
+                                alt="Preview"
+                                className="w-16 h-20 object-cover rounded-md mx-auto mb-2 border border-zinc-200 dark:border-zinc-800 bg-white"
+                              />
+                              <span className="text-[9px] text-emerald-500 font-bold block">Image Uploaded</span>
+                            </div>
+                          ) : (
+                            <div className="text-center text-zinc-400">
+                              <Upload className="w-5 h-5 mx-auto mb-1 text-zinc-400" />
+                              <span className="text-[10px] font-semibold">Upload Poster Image</span>
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <div className="text-center text-zinc-400">
-                          <Upload className="w-5 h-5 mx-auto mb-1 text-zinc-400" />
-                          <span className="text-[10px] font-semibold">Upload Poster Image</span>
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            placeholder="https://images.unsplash.com/photo-..."
+                            value={posterImage && !posterImage.startsWith('data:image/') ? posterImage : ''}
+                            onChange={(e) => setPosterImage(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                          />
+                          {posterImage && !posterImage.startsWith('data:image/') && (
+                            <div className="text-center">
+                              <img
+                                src={posterImage}
+                                alt="Preview"
+                                className="w-16 h-20 object-cover rounded-md mx-auto mb-1 border border-zinc-200 dark:border-zinc-800 bg-white"
+                                onError={(e) => { e.target.src = 'https://via.placeholder.com/400x600?text=Invalid+Image+URL'; }}
+                              />
+                              <span className="text-[9px] text-zinc-400 font-semibold block">URL Preview</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      rows={3}
-                      placeholder="Enter premium description details..."
-                      value={posterDesc}
-                      onChange={(e) => setPosterDesc(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                        Description
+                      </label>
+                      <textarea
+                        rows={3}
+                        placeholder="Enter premium description details..."
+                        value={posterDesc}
+                        onChange={(e) => setPosterDesc(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                      />
+                    </div>
 
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="submit"
-                      className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-colors"
-                    >
-                      {editingId ? 'Update Product' : 'Add Poster to Store'}
-                    </button>
-                    {editingId && (
+                    <div className="flex gap-3 pt-2">
                       <button
-                        type="button"
-                        onClick={() => {
-                          setEditingId(null);
-                          setPosterTitle('');
-                          setPosterCategory('');
-                          setPosterPrice('');
-                          setPosterDiscountPrice('');
-                          setPosterDesc('');
-                          setPosterImage('');
-                        }}
-                        className="px-4 py-3 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs hover:bg-zinc-300 transition-colors"
+                        type="submit"
+                        className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-colors"
                       >
-                        Cancel
+                        {editingId ? 'Update Product' : 'Add Poster to Store'}
                       </button>
-                    )}
+                      {editingId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(null);
+                            setPosterTitle('');
+                            setPosterCategory('');
+                            setPosterPrice('');
+                            setPosterDiscountPrice('');
+                            setPosterDesc('');
+                            setPosterImage('');
+                          }}
+                          className="px-4 py-3 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs hover:bg-zinc-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+
+                {/* Bulk Operations Tools */}
+                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md h-fit">
+                  <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
+                    <Database className="w-4 h-4 text-blue-500" />
+                    <span>Bulk Operations</span>
+                  </h3>
+                  <p className="text-zinc-400 text-[10px] leading-relaxed mb-4">
+                    Import or export your entire products inventory list instantly in JSON format.
+                  </p>
+
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={handleBulkExport}
+                      className="w-full py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 font-bold text-xs shadow-sm hover:shadow-neo-in transition-all flex items-center justify-center gap-2"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Export Catalog (JSON)</span>
+                    </button>
+
+                    <div className="relative border border-dashed border-zinc-300 dark:border-zinc-750 hover:border-blue-500 rounded-xl p-3 flex items-center justify-center cursor-pointer transition-all">
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleBulkImport}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <div className="flex items-center gap-2 text-zinc-400">
+                        <Upload className="w-4 h-4" />
+                        <span className="text-xs font-semibold">Import Products JSON</span>
+                      </div>
+                    </div>
                   </div>
-                </form>
+                </div>
               </div>
 
-              {/* Right Side: Posters List Table */}
-              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md xl:col-span-2 overflow-x-auto">
+              {/* Right Column: Posters List Table */}
+              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md xl:col-span-2 overflow-x-auto h-fit">
                 <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
                   Catalog Inventory ({posters.length})
                 </h3>
@@ -531,6 +713,7 @@ export default function AdminPanel({ session, onLogout }) {
                             src={p.image}
                             alt={p.title}
                             className="w-10 h-14 object-cover rounded-md border border-zinc-200 dark:border-zinc-800 bg-white"
+                            onError={(e) => { e.target.src = 'https://via.placeholder.com/400x600?text=No+Image'; }}
                           />
                         </td>
                         <td className="py-3 font-semibold">{p.title}</td>
@@ -647,4 +830,3 @@ export default function AdminPanel({ session, onLogout }) {
     </div>
   );
 }
-
