@@ -104,7 +104,6 @@ export default function App() {
     const savedSession = localStorage.getItem('SINGLESTORE_ADMIN_SESSION');
     if (savedSession) {
       setAdminSession(JSON.parse(savedSession));
-      setView('admin');
     }
   }, []);
 
@@ -337,9 +336,9 @@ export default function App() {
             user ? (
               <AccountView setView={setView} user={user} onLogout={handleLogout} />
             ) : (
-              <LoginView 
-                setView={setView} 
-                onLoginSuccess={setUser} 
+              <LoginView
+                setView={setView}
+                onLoginSuccess={setUser}
                 onAdminLogin={(session) => {
                   setAdminSession(session);
                   setView('admin');
