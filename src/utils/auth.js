@@ -3,6 +3,7 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signInWithPopup, 
+  signInWithRedirect,
   GoogleAuthProvider, 
   signOut, 
   onAuthStateChanged,
@@ -143,8 +144,18 @@ export async function registerWithEmail(name, email, password) {
 export async function loginWithGoogle() {
   if (isFirebaseConfigured && auth) {
     const provider = new GoogleAuthProvider();
-    const userCredential = await signInWithPopup(auth, provider);
-    return userCredential.user;
+    try {
+      const userCredential = await signInWithPopup(auth, provider);
+      return userCredential.user;
+    } catch (error) {
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+        console.warn("Google Auth popup was blocked or cancelled. Falling back to signInWithRedirect...");
+        await signInWithRedirect(auth, provider);
+        // Return a promise that doesn't resolve to keep UI in loading state during redirect
+        return new Promise(() => {});
+      }
+      throw error;
+    }
   } else {
     // Simulate Google sign-in
     const mockGoogleUser = {

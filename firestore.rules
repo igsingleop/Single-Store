@@ -3,35 +3,37 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // 1. User Profiles Collection
-    // Allows users to read and update their own profile details
+    // In Production: Only the logged-in user can read/write their own profile.
     match /users/{userId} {
-      allow read, write: if true; 
-      // Secure Alternative:
-      // allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // 2. Posters / Catalog Collection
-    // Allows anyone to read product catalog, and allows management/writes (in dev mode, allowed for all)
+    // Anyone can read the product catalog.
+    // In Production: Only admin users should write. Since the current admin panel uses
+    // client-side mock authentication, write is set to true for now.
+    // Recommended: Authenticate admin via Firebase Auth and use: if request.auth != null && request.auth.token.email.endsWith('@singlestore.in')
     match /posters/{posterId} {
-      allow read, write: if true;
-      // Secure Alternative:
-      // allow read: if true;
-      // allow write: if request.auth != null; // or restrict to specific admin emails
+      allow read: if true;
+      allow write: if true; 
     }
 
     // 3. Orders Collection
-    // Allows customers to place orders (write) and view them (read)
+    // Anyone can place an order (create), but only authorized users or admin should read/update.
+    // Since the storefront fetches all orders and filters them on the client side, read is allowed for now.
+    // Recommended: Query orders by customer email and restrict: allow read: if request.auth != null && request.auth.token.email == resource.data.customerEmail
     match /orders/{orderId} {
-      allow read, write: if true;
-      // Secure Alternative:
-      // allow create: if true;
-      // allow read: if request.auth != null;
+      allow create: if true;
+      allow read, update, delete: if true;
     }
 
     // 4. Admin Users Collection
-    // Allows reading/writing admin logins
+    // Store credentials of admin users.
+    // WARNING: Storing plain-text passwords and allowing public read is highly insecure.
+    // Recommended: Use Firebase Auth for administrative users.
     match /admins/{adminEmail} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if false; // Block registration from general public in production
     }
   }
 }
