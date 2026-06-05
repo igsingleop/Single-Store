@@ -11,7 +11,8 @@ export default function Navbar({
   toggleCart,
   searchQuery,
   setSearchQuery,
-  user
+  user,
+  adminSession
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -71,6 +72,18 @@ export default function Navbar({
         >
           My Account
         </button>
+        {adminSession && (
+          <button
+            onClick={() => setView('admin')}
+            className={`font-medium transition-colors ${
+              currentView === 'admin'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-zinc-600 dark:text-zinc-300 hover:text-blue-500'
+            }`}
+          >
+            Admin Panel
+          </button>
+        )}
       </div>
 
       {/* Search Input - Desktop */}
@@ -207,6 +220,16 @@ export default function Navbar({
             >
               My Account
             </button>
+            {adminSession && (
+              <button
+                onClick={() => { setView('admin'); setIsMobileMenuOpen(false); }}
+                className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 ${
+                  currentView === 'admin' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-300'
+                }`}
+              >
+                Admin Panel
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

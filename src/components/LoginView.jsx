@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight, ShieldCheck, AlertCircle, Eye, EyeOff, Sparkles, HelpCircle } from 'lucide-react';
 import { loginWithEmail, registerWithEmail, loginWithGoogle } from '../utils/auth';
 import { isFirebaseConfigured } from '../utils/firebase';
+import { getAdmins } from '../utils/db';
 
-export default function LoginView({ setView, onLoginSuccess }) {
+export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
   const [authTab, setAuthTab] = useState('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -72,6 +73,21 @@ export default function LoginView({ setView, onLoginSuccess }) {
         if (onLoginSuccess) onLoginSuccess(user);
         setTimeout(() => setView('account'), 800);
       } else {
+        // Check if credentials match any admin
+        const admins = await getAdmins();
+        const matchAdmin = admins.find(
+          u => u.email.toLowerCase() === email.toLowerCase().trim() && u.password === password
+        );
+        if (matchAdmin) {
+          const session = { email: matchAdmin.email, name: matchAdmin.name, time: Date.now() };
+          localStorage.setItem('SINGLESTORE_ADMIN_SESSION', JSON.stringify(session));
+          setSuccessMsg('Admin login successful! Redirecting to admin panel...');
+          if (onAdminLogin) {
+            onAdminLogin(session);
+          }
+          return;
+        }
+
         const user = await loginWithEmail(email, password);
         setSuccessMsg('Successfully signed in!');
         if (onLoginSuccess) onLoginSuccess(user);

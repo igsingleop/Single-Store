@@ -28,7 +28,7 @@ import {
   savePosters
 } from '../../utils/db';
 
-export default function AdminPanel({ session, onLogout }) {
+export default function AdminPanel({ session, onLogout, onBackToStore = () => window.location.href = '/' }) {
   // Default to inventory management workspace
   const [activeTab, setActiveTab] = useState('inventory');
   const [posters, setPosters] = useState([]);
@@ -311,13 +311,13 @@ export default function AdminPanel({ session, onLogout }) {
         </button>
 
         {/* Return to shop */}
-        <a
-          href="/"
-          className="hidden lg:flex px-4 py-3 rounded-2xl font-bold text-xs md:text-sm items-center space-x-2.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55 mt-auto"
+        <button
+          onClick={onBackToStore}
+          className="hidden lg:flex px-4 py-3 rounded-2xl font-bold text-xs md:text-sm items-center space-x-2.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55 mt-auto text-left"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Return to Shop</span>
-        </a>
+        </button>
 
         {/* Logout Button */}
         <button

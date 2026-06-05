@@ -17,7 +17,8 @@ import CheckoutView from './components/CheckoutView';
 import AccountView from './components/AccountView';
 import LoginView from './components/LoginView';
 import PosterCard from './components/PosterCard';
-import { ArrowRight, ShieldCheck, Mail } from 'lucide-react';
+import AdminPanel from './components/admin/AdminPanel';
+import { ArrowRight, ShieldCheck, Mail, ShieldAlert, ArrowLeft, Sun, Moon } from 'lucide-react';
 
 export default function App() {
   const [currentView, setView] = useState('home');
@@ -27,6 +28,9 @@ export default function App() {
 
   // Auth User State
   const [user, setUser] = useState(null);
+
+  // Admin session state
+  const [adminSession, setAdminSession] = useState(null);
 
   // Core reactive data states
   const [posters, setPosters] = useState([]);
@@ -95,6 +99,21 @@ export default function App() {
     localStorage.setItem('singlestore_theme', theme);
   }, [theme]);
 
+  // Restore admin session on mount
+  useEffect(() => {
+    const savedSession = localStorage.getItem('SINGLESTORE_ADMIN_SESSION');
+    if (savedSession) {
+      setAdminSession(JSON.parse(savedSession));
+      setView('admin');
+    }
+  }, []);
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem('SINGLESTORE_ADMIN_SESSION');
+    setAdminSession(null);
+    setView('home');
+  };
+
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
@@ -160,6 +179,54 @@ export default function App() {
     return 'Rs. ' + parseFloat(price).toFixed(2);
   };
 
+  if (currentView === 'admin' && adminSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-100 to-blue-100/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-indigo-950/20 text-zinc-800 dark:text-zinc-100 flex flex-col font-sans transition-colors duration-300">
+        {/* Admin Header */}
+        <header className="sticky top-0 z-40 w-full glass-panel border-b px-6 py-4 flex items-center justify-between shadow-sm">
+          <div className="flex items-center space-x-2.5">
+            <ShieldAlert className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <span className="font-outfit text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+              Single Store Admin.
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            {/* Theme switcher */}
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
+            </button>
+
+            {/* Back to Store button */}
+            <button
+              onClick={() => {
+                setView('home');
+              }}
+              className="text-xs font-bold bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 px-4 py-2.5 rounded-xl hover:shadow-neo-in shadow-neo-out flex items-center space-x-1.5 transition-all"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Store</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Main Content routing */}
+        <main className="flex-1">
+          <AdminPanel session={adminSession} onLogout={handleAdminLogout} onBackToStore={() => setView('home')} />
+        </main>
+
+        {/* Footer */}
+        <footer className="py-6 border-t border-zinc-200/50 dark:border-zinc-800/50 text-center text-[10px] text-zinc-400 dark:text-zinc-500">
+          &copy; {new Date().getFullYear()} SingleStore Control Centre. Authorized Access Only.
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-100 to-blue-100/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-indigo-950/20 text-zinc-800 dark:text-zinc-100 flex flex-col font-sans transition-colors duration-300">
 
@@ -186,6 +253,7 @@ export default function App() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         user={user}
+        adminSession={adminSession}
       />
 
       {/* Main Content Area */}
@@ -269,7 +337,14 @@ export default function App() {
             user ? (
               <AccountView setView={setView} user={user} onLogout={handleLogout} />
             ) : (
-              <LoginView setView={setView} onLoginSuccess={setUser} />
+              <LoginView 
+                setView={setView} 
+                onLoginSuccess={setUser} 
+                onAdminLogin={(session) => {
+                  setAdminSession(session);
+                  setView('admin');
+                }}
+              />
             )
           )}
         </m.div>
