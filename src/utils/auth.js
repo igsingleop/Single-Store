@@ -148,6 +148,9 @@ export async function loginWithGoogle() {
       const userCredential = await signInWithPopup(auth, provider);
       return userCredential.user;
     } catch (error) {
+      if (error.code === 'auth/unauthorized-domain') {
+        throw new Error(`This domain (${window.location.hostname}) is not authorized in Firebase. Please add it to your Firebase Console under Authentication > Settings > Authorized domains.`);
+      }
       if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
         console.warn("Google Auth popup was blocked or cancelled. Falling back to signInWithRedirect...");
         await signInWithRedirect(auth, provider);
