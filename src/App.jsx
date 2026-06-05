@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion as m, AnimatePresence } from 'framer-motion';
 import {
   getPosters,
@@ -6,6 +6,7 @@ import {
   saveCart,
   initDB
 } from './utils/db';
+import { subscribeAuth, logout } from './utils/auth';
 
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -14,14 +15,18 @@ import ProductDetailModal from './components/ProductDetailModal';
 import CartDrawer from './components/CartDrawer';
 import CheckoutView from './components/CheckoutView';
 import AccountView from './components/AccountView';
+import LoginView from './components/LoginView';
 import PosterCard from './components/PosterCard';
-import { Sparkles, ArrowRight, ShieldCheck, Mail } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Mail } from 'lucide-react';
 
 export default function App() {
   const [currentView, setView] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPosterId, setSelectedPosterId] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Auth User State
+  const [user, setUser] = useState(null);
 
   // Core reactive data states
   const [posters, setPosters] = useState([]);
@@ -66,6 +71,16 @@ export default function App() {
     return () => {
       window.removeEventListener('singlestore_db_update', handleDbUpdate);
       window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Subscribe to customer auth changes
+  useEffect(() => {
+    const unsubscribe = subscribeAuth((loggedInUser) => {
+      setUser(loggedInUser);
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
     };
   }, []);
 
@@ -131,6 +146,11 @@ export default function App() {
     setView('checkout');
   };
 
+  const handleLogout = async () => {
+    await logout();
+    setView('home');
+  };
+
   const handleOrderConfirmed = (order) => {
     setCompletedOrder(order);
     setView('home');
@@ -165,6 +185,7 @@ export default function App() {
         toggleCart={() => setIsCartOpen(!isCartOpen)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        user={user}
       />
 
       {/* Main Content Area */}
@@ -236,14 +257,20 @@ export default function App() {
 
           {currentView === 'checkout' && (
             <CheckoutView
+              key={user ? user.uid : 'guest'}
               cart={cart}
               setView={setView}
               onOrderConfirmed={handleOrderConfirmed}
+              user={user}
             />
           )}
 
           {currentView === 'account' && (
-            <AccountView setView={setView} />
+            user ? (
+              <AccountView setView={setView} user={user} onLogout={handleLogout} />
+            ) : (
+              <LoginView setView={setView} onLoginSuccess={setUser} />
+            )
           )}
         </m.div>
       </main>

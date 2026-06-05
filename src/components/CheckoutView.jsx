@@ -1,16 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, ShoppingBag, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { CreditCard, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { addOrder, saveCart } from '../utils/db';
+import { getUserProfileDetails } from '../utils/auth';
 
-export default function CheckoutView({ cart, setView, onOrderConfirmed }) {
-  const [email, setEmail] = useState('');
-  const [fname, setFname] = useState('');
-  const [lname, setLname] = useState('');
+export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) {
+  const [email, setEmail] = useState(user ? user.email || '' : '');
+  const [fname, setFname] = useState(() => {
+    if (user && user.displayName) {
+      return user.displayName.split(' ')[0] || '';
+    }
+    return '';
+  });
+  const [lname, setLname] = useState(() => {
+    if (user && user.displayName) {
+      const parts = user.displayName.split(' ');
+      return parts.slice(1).join(' ') || '';
+    }
+    return '';
+  });
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Load custom profile details for auto-prefill
+  useEffect(() => {
+    const prefillProfileDetails = async () => {
+      if (user) {
+        try {
+          const profile = await getUserProfileDetails(user.uid, user.email);
+          if (profile) {
+            if (profile.contactEmail) setEmail(profile.contactEmail);
+            if (profile.address) setAddress(profile.address);
+            if (profile.city) setCity(profile.city);
+            if (profile.pinCode) setPinCode(profile.pinCode);
+          }
+        } catch (e) {
+          console.error("Error pre-filling checkout details", e);
+        }
+      }
+    };
+    prefillProfileDetails();
+  }, [user]);
 
   // Load Razorpay Script dynamically
   useEffect(() => {

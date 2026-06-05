@@ -1,5 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,11 +17,15 @@ const isFirebaseConfigured = !!import.meta.env.VITE_FIREBASE_PROJECT_ID;
 
 let app;
 let firestoreDb = null;
+let auth = null;
+let storage = null;
 
 if (isFirebaseConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     firestoreDb = getFirestore(app);
+    auth = getAuth(app);
+    storage = getStorage(app);
   } catch (error) {
     console.error("Firebase initialization failed:", error);
   }
@@ -27,4 +33,5 @@ if (isFirebaseConfigured) {
   console.warn("Firebase configurations are missing. Running in LocalStorage fallback mode.");
 }
 
-export { firestoreDb, isFirebaseConfigured };
+export { firestoreDb, auth, storage, isFirebaseConfigured };
+

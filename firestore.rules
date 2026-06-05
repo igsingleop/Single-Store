@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. User Profiles Collection
+    // Allows users to read and update their own profile details
+    match /users/{userId} {
+      allow read, write: if true; 
+      // Secure Alternative:
+      // allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 2. Posters / Catalog Collection
+    // Allows anyone to read product catalog, and allows management/writes (in dev mode, allowed for all)
+    match /posters/{posterId} {
+      allow read, write: if true;
+      // Secure Alternative:
+      // allow read: if true;
+      // allow write: if request.auth != null; // or restrict to specific admin emails
+    }
+
+    // 3. Orders Collection
+    // Allows customers to place orders (write) and view them (read)
+    match /orders/{orderId} {
+      allow read, write: if true;
+      // Secure Alternative:
+      // allow create: if true;
+      // allow read: if request.auth != null;
+    }
+
+    // 4. Admin Users Collection
+    // Allows reading/writing admin logins
+    match /admins/{adminEmail} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -10,9 +10,19 @@ export default function Navbar({
   cartCount,
   toggleCart,
   searchQuery,
-  setSearchQuery
+  setSearchQuery,
+  user
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  };
 
   return (
     <nav className="sticky top-0 z-40 w-full glass-panel border-b px-6 py-4 flex items-center justify-between shadow-sm">
@@ -108,12 +118,28 @@ export default function Navbar({
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => setView('account')}
-          className={`p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all duration-300 ${
+          className={`relative rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all duration-300 flex items-center justify-center ${
+            user ? 'p-1 bg-zinc-150 dark:bg-zinc-800' : 'p-2.5 bg-zinc-100 dark:bg-zinc-800'
+          } ${
             currentView === 'account' ? 'text-blue-600 dark:text-blue-400 ring-2 ring-blue-500/20' : 'text-zinc-700 dark:text-zinc-200'
           }`}
           aria-label="Account"
         >
-          <User className="w-5 h-5" />
+          {user ? (
+            user.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={user.displayName || 'User'}
+                className="w-8 h-8 rounded-lg object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-[10px] font-black shadow-inner">
+                {getInitials(user.displayName || user.email)}
+              </div>
+            )
+          ) : (
+            <User className="w-5 h-5" />
+          )}
         </motion.button>
 
         {/* Cart Trigger (Neomorphic + Badge) */}
