@@ -61,31 +61,93 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
     return 'Rs. ' + parseFloat(price).toFixed(2);
   };
 
-  const handleCheckoutSubmit = (e) => {
+  const handleCheckoutSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    const rzpOptions = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_YOUR_KEY_HERE", // Dynamically loaded from env
-      amount: Math.round(total * 100),
-      currency: "INR",
-      name: "Single Store",
-      description: "Wall Posters Purchase",
-      image: "https://via.placeholder.com/150?text=Single+Store",
-      handler: function (response) {
-        confirmOrder(response.razorpay_payment_id || "mock_pay_" + Math.floor(Math.random() * 100000));
-      },
-      prefill: {
-        name: `${fname} ${lname}`,
-        email: email,
-        contact: "9999999999"
-      },
-      theme: {
-        color: "#3B82F6" // Blue theme accent
-      }
-    };
-
     try {
+      const amountInPaise = Math.round(total * 100);
+      
+      // Step 1: Create Order on backend
+      const response = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amountInPaise,
+          currency: 'INR',
+          receipt: `receipt_${Date.now()}`,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || `Failed to create order (status: ${response.status})`);
+      }
+
+      const orderData = await response.json();
+
+      // Step 2: Open Razorpay modal with order_id
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+      console.log("Initiating checkout with Razorpay Key ID:", razorpayKey);
+      if (!razorpayKey) {
+        throw new Error("VITE_RAZORPAY_KEY_ID is missing. If you recently updated the .env file, please restart your terminal dev server (npm run dev) to load the new variables.");
+      }
+
+      const rzpOptions = {
+        key: razorpayKey,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Single Store",
+        description: "Wall Posters Purchase",
+        image: "https://via.placeholder.com/150?text=Single+Store",
+        order_id: orderData.order_id,
+        handler: async function (paymentResponse) {
+          // Step 3: Verify Payment Signature on backend
+          try {
+            setLoading(true);
+            const verifyRes = await fetch('/api/verify-payment', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                razorpay_order_id: paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyRes.ok && verifyData.success) {
+              confirmOrder(paymentResponse.razorpay_payment_id);
+            } else {
+              alert("Payment verification failed: " + (verifyData.error || "Invalid signature"));
+              setLoading(false);
+            }
+          } catch (verifyErr) {
+            console.error("Signature verification error:", verifyErr);
+            alert("Payment verification failed due to network error.");
+            setLoading(false);
+          }
+        },
+        prefill: {
+          name: `${fname} ${lname}`,
+          email: email,
+          contact: "9999999999"
+        },
+        theme: {
+          color: "#3B82F6"
+        },
+        modal: {
+          ondismiss: function () {
+            console.log("Checkout modal dismissed by user");
+            setLoading(false);
+          }
+        }
+      };
+
       if (window.Razorpay) {
         const rzp1 = new window.Razorpay(rzpOptions);
         rzp1.on('payment.failed', function (resp) {
@@ -96,16 +158,11 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
       } else {
         throw new Error("Razorpay script not loaded");
       }
+
     } catch (err) {
-      console.warn("Razorpay SDK initialization failed, completing with mock checkout:", err);
-      // Fallback checkout confirmation
-      if (window.confirm("Razorpay payment gateway is running in Sandbox. Complete order in Demo Mode?")) {
-        setTimeout(() => {
-          confirmOrder("mock_pay_" + Math.floor(Math.random() * 100000));
-        }, 1200);
-      } else {
-        setLoading(false);
-      }
+      console.error("Razorpay integration error:", err);
+      alert("Error initiating checkout: " + err.message);
+      setLoading(false);
     }
   };
 
