@@ -7,6 +7,8 @@ import {
   initDB,
   getCoupons
 } from './utils/db';
+import { subscribeAuth, logout } from './utils/auth';
+
 
 
 import Navbar from './components/Navbar';
@@ -102,6 +104,18 @@ export default function App() {
     return () => {
       window.removeEventListener('singlestore_db_update', handleDbUpdate);
       window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Listen to customer auth changes reactively
+  useEffect(() => {
+    const unsubscribe = subscribeAuth((updatedUser) => {
+      setUser(updatedUser);
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
     };
   }, []);
 
@@ -449,7 +463,8 @@ export default function App() {
               <AccountView
                 setView={setView}
                 user={user}
-                onLogout={() => {
+                onLogout={async () => {
+                  await logout();
                   setUser(null);
                   setView('home');
                 }}

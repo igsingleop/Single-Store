@@ -90,7 +90,7 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
               </span>
               {poster.discountPrice && (
                 <span className="font-inter text-sm text-zinc-400 dark:text-zinc-500 line-through">
-                  Rs. {((poster.price) + (selectedSize.includes('24x36') ? 10 : 0) + (selectedFrame.includes('Frame') ? 15 : 0)).toFixed(2)}
+                  Rs. {((parseFloat(poster.price)) + (selectedSize.includes('24x36') ? 10 : 0) + (selectedFrame.includes('Frame') ? 15 : 0)).toFixed(2)}
                 </span>
               )}
             </div>

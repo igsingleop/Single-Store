@@ -122,6 +122,21 @@ export default function CheckoutView({
     e.preventDefault();
     setLoading(true);
 
+    const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+    // Fallback to simulated checkout directly if VITE_RAZORPAY_KEY_ID is not configured
+    if (!razorpayKey) {
+      console.log("No VITE_RAZORPAY_KEY_ID configured. Bypassing Razorpay and starting simulated checkout.");
+      if (window.confirm("Razorpay API credentials are not configured. Would you like to complete this order using simulated Demo Mode?")) {
+        setTimeout(() => {
+          confirmOrder("mock_pay_" + Math.floor(Math.random() * 1000000));
+        }, 1000);
+      } else {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
       const amountInPaise = Math.round(grandTotal * 100);
       
@@ -144,13 +159,6 @@ export default function CheckoutView({
       }
 
       const orderData = await response.json();
-
-      // Step 2: Open Razorpay modal with order_id
-      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
-      console.log("Initiating checkout with Razorpay Key ID:", razorpayKey);
-      if (!razorpayKey) {
-        throw new Error("VITE_RAZORPAY_KEY_ID is missing. If you recently updated the .env file, please restart your terminal dev server (npm run dev) to load the new variables.");
-      }
 
       const rzpOptions = {
         key: razorpayKey,
@@ -216,9 +224,14 @@ export default function CheckoutView({
       }
 
     } catch (err) {
-      console.error("Razorpay integration error:", err);
-      alert("Error initiating checkout: " + err.message);
-      setLoading(false);
+      console.warn("Razorpay checkout failed, falling back to simulated checkout:", err);
+      if (window.confirm(`Razorpay integration failed: "${err.message}". Would you like to complete this order using simulated Demo Mode?`)) {
+        setTimeout(() => {
+          confirmOrder("mock_pay_" + Math.floor(Math.random() * 1000000));
+        }, 1000);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
