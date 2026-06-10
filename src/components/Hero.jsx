@@ -8,47 +8,11 @@ export default function Hero({ setView }) {
       {/* Background Animated Gradient Blobs */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         {/* Blob 1 */}
-        <motion.div
-          animate={{
-            x: [0, 50, -50, 0],
-            y: [0, -60, 40, 0],
-            scale: [1, 1.2, 0.9, 1]
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-blue-400/20 dark:bg-blue-600/10 blur-3xl"
-        />
+        <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-blue-400/20 dark:bg-blue-600/10 blur-3xl animate-blob-1" />
         {/* Blob 2 */}
-        <motion.div
-          animate={{
-            x: [0, -70, 70, 0],
-            y: [0, 50, -50, 0],
-            scale: [1, 0.8, 1.1, 1]
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full bg-indigo-400/20 dark:bg-indigo-600/10 blur-3xl"
-        />
+        <div className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full bg-indigo-400/20 dark:bg-indigo-600/10 blur-3xl animate-blob-2" />
         {/* Blob 3 */}
-        <motion.div
-          animate={{
-            x: [0, 30, -30, 0],
-            y: [0, 40, -40, 0],
-            scale: [1, 1.15, 0.85, 1]
-          }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="absolute top-1/2 left-1/3 w-64 h-64 rounded-full bg-sky-400/15 dark:bg-sky-600/5 blur-3xl"
-        />
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 rounded-full bg-sky-400/15 dark:bg-sky-600/5 blur-3xl animate-blob-3" />
       </div>
 
       {/* Hero Content (Glassmorphic Container) */}

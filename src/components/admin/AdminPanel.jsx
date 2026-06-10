@@ -25,7 +25,8 @@ import {
   deletePoster,
   getOrders,
   updateOrderStatus,
-  savePosters
+  savePosters,
+  deleteOrder
 } from '../../utils/db';
 
 export default function AdminPanel({ session, onLogout, onBackToStore = () => window.location.href = '/' }) {
@@ -68,6 +69,30 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
 
   const formatPrice = (price) => {
     return 'Rs. ' + parseFloat(price).toFixed(2);
+  };
+
+  const getStatusBadgeClass = (status) => {
+    if (!status) return 'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400';
+    switch (status) {
+      case 'Delivered':
+      case 'Completed':
+        return 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400';
+      case 'Cancelled':
+        return 'bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400';
+      case 'Delayed':
+        return 'bg-red-100 dark:bg-red-950/40 text-red-650 dark:text-red-400';
+      case 'Placed':
+        return 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400';
+      case 'Order Received':
+        return 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-450';
+      case 'Order Packed':
+        return 'bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400';
+      case 'Dispatch':
+      case 'On the way':
+        return 'bg-sky-100 dark:bg-sky-950/40 text-sky-655 dark:text-sky-400';
+      default:
+        return 'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400';
+    }
   };
 
   // --- STATS CALCULATIONS ---
@@ -202,6 +227,13 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     await updateOrderStatus(orderId, newStatus);
     alert(`Order #${orderId} marked as ${newStatus}`);
+  };
+
+  const handleDeleteOrderClick = async (id) => {
+    if (window.confirm("Are you sure you want to delete this order?")) {
+      await deleteOrder(id);
+      alert("Order deleted successfully!");
+    }
   };
 
   // --- BULK OPERATIONS ---
@@ -436,11 +468,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                           <td className="py-3">{new Date(o.date).toLocaleDateString()}</td>
                           <td className="py-3 font-extrabold">{formatPrice(o.total)}</td>
                           <td className="py-3">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                              o.status === 'Completed' ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600' :
-                              o.status === 'Cancelled' ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-600' :
-                              'bg-amber-100 dark:bg-amber-950/40 text-amber-600'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${getStatusBadgeClass(o.status)}`}>
                               {o.status}
                             </span>
                           </td>
@@ -797,20 +825,37 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                         <select
                           value={o.status}
                           onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
-                          className="px-2.5 py-1.5 rounded-lg text-xs bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all ${getStatusBadgeClass(o.status)}`}
                         >
-                          <option value="Pending">Pending</option>
-                          <option value="Completed">Completed</option>
-                          <option value="Cancelled">Cancelled</option>
+                          <option value="Pending" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">Pending</option>
+                          <option value="Placed" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">Placed</option>
+                          <option value="Order Received" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">Order Received</option>
+                          <option value="Order Packed" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">Order Packed</option>
+                          <option value="Dispatch" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">Dispatch</option>
+                          <option value="On the way" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">On the way</option>
+                          <option value="Delayed" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">Delayed</option>
+                          <option value="Delivered" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">Delivered</option>
+                          <option value="Completed" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">Completed</option>
+                          <option value="Cancelled" className="bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100">Cancelled</option>
                         </select>
                       </td>
                       <td className="py-3 text-right">
-                        <button
-                          onClick={() => alert(`Order details:\nItems:\n${o.items.map(i => `- ${i.title} (${i.size}, ${i.frame})`).join('\n')}`)}
-                          className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-semibold transition-colors"
-                        >
-                          Details
-                        </button>
+                        <div className="inline-flex gap-2">
+                          <button
+                            onClick={() => alert(`Order details:\nItems:\n${o.items.map(i => `- ${i.title} (${i.size}, ${i.frame})`).join('\n')}`)}
+                            className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-semibold transition-colors"
+                          >
+                            Details
+                          </button>
+                          <button
+                            onClick={() => handleDeleteOrderClick(o.id)}
+                            className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white transition-colors"
+                            title="Delete Order"
+                            aria-label="Delete order"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

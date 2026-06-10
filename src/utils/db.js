@@ -281,6 +281,22 @@ export async function updateOrderStatus(orderId, newStatus) {
   }
 }
 
+export async function deleteOrder(orderId) {
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      await deleteDoc(doc(firestoreDb, 'orders', String(orderId)));
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    } catch (e) {
+      console.error("Firestore deleteOrder error:", e);
+    }
+  } else {
+    const orders = safeParse(DB_ORDERS_KEY, []);
+    const filteredOrders = orders.filter(o => String(o.id) !== String(orderId));
+    localStorage.setItem(DB_ORDERS_KEY, JSON.stringify(filteredOrders));
+    window.dispatchEvent(new Event('singlestore_db_update'));
+  }
+}
+
 // --- Cart Operations (Client-only LocalStorage) ---
 export function getCart() {
   return safeParse(DB_CART_KEY, []);

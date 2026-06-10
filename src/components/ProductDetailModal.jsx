@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, ShoppingBag, ShieldCheck, Truck, RefreshCw } from 'lucide-react';
 
 export default function ProductDetailModal({ posterId, posters, onClose, onAddToCart }) {
+  const [selectedSize, setSelectedSize] = useState('18x24"');
+  const [selectedFrame, setSelectedFrame] = useState('Print Only');
+
   const poster = posters.find(p => String(p.id) === String(posterId));
   
   if (!poster) return null;
-
-  const [selectedSize, setSelectedSize] = useState('18x24"');
-  const [selectedFrame, setSelectedFrame] = useState('Print Only');
 
   const basePrice = poster.discountPrice ? parseFloat(poster.discountPrice) : parseFloat(poster.price);
   

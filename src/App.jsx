@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion as m, AnimatePresence } from 'framer-motion';
 import {
   getPosters,
@@ -13,12 +13,14 @@ import Hero from './components/Hero';
 import ShopView from './components/ShopView';
 import ProductDetailModal from './components/ProductDetailModal';
 import CartDrawer from './components/CartDrawer';
-import CheckoutView from './components/CheckoutView';
-import AccountView from './components/AccountView';
-import LoginView from './components/LoginView';
 import PosterCard from './components/PosterCard';
-import AdminPanel from './components/admin/AdminPanel';
 import { ArrowRight, ShieldCheck, Mail, ShieldAlert, ArrowLeft, Sun, Moon } from 'lucide-react';
+
+// Lazy-loaded components for optimal bundle size and CPU execution time
+const CheckoutView = lazy(() => import('./components/CheckoutView'));
+const AccountView = lazy(() => import('./components/AccountView'));
+const LoginView = lazy(() => import('./components/LoginView'));
+const AdminPanel = lazy(() => import('./components/admin/AdminPanel'));
 
 export default function App() {
   const [currentView, setView] = useState('home');
@@ -30,7 +32,14 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   // Admin session state
-  const [adminSession, setAdminSession] = useState(null);
+  const [adminSession, setAdminSession] = useState(() => {
+    try {
+      const saved = localStorage.getItem('SINGLESTORE_ADMIN_SESSION');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Core reactive data states
   const [posters, setPosters] = useState([]);
@@ -99,13 +108,7 @@ export default function App() {
     localStorage.setItem('singlestore_theme', theme);
   }, [theme]);
 
-  // Restore admin session on mount
-  useEffect(() => {
-    const savedSession = localStorage.getItem('SINGLESTORE_ADMIN_SESSION');
-    if (savedSession) {
-      setAdminSession(JSON.parse(savedSession));
-    }
-  }, []);
+
 
   const handleAdminLogout = () => {
     localStorage.removeItem('SINGLESTORE_ADMIN_SESSION');
@@ -215,7 +218,9 @@ export default function App() {
 
         {/* Main Content routing */}
         <main className="flex-1">
-          <AdminPanel session={adminSession} onLogout={handleAdminLogout} onBackToStore={() => setView('home')} />
+          <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center text-xs font-semibold text-zinc-500">Loading Admin Center...</div>}>
+            <AdminPanel session={adminSession} onLogout={handleAdminLogout} onBackToStore={() => setView('home')} />
+          </Suspense>
         </main>
 
         {/* Footer */}
@@ -323,28 +328,32 @@ export default function App() {
           )}
 
           {currentView === 'checkout' && (
-            <CheckoutView
-              key={user ? user.uid : 'guest'}
-              cart={cart}
-              setView={setView}
-              onOrderConfirmed={handleOrderConfirmed}
-              user={user}
-            />
+            <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center text-xs font-semibold text-zinc-500">Loading Checkout...</div>}>
+              <CheckoutView
+                key={user ? user.uid : 'guest'}
+                cart={cart}
+                setView={setView}
+                onOrderConfirmed={handleOrderConfirmed}
+                user={user}
+              />
+            </Suspense>
           )}
 
           {currentView === 'account' && (
-            user ? (
-              <AccountView setView={setView} user={user} onLogout={handleLogout} />
-            ) : (
-              <LoginView
-                setView={setView}
-                onLoginSuccess={setUser}
-                onAdminLogin={(session) => {
-                  setAdminSession(session);
-                  setView('admin');
-                }}
-              />
-            )
+            <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center text-xs font-semibold text-zinc-500">Loading Account...</div>}>
+              {user ? (
+                <AccountView setView={setView} user={user} onLogout={handleLogout} />
+              ) : (
+                <LoginView
+                  setView={setView}
+                  onLoginSuccess={setUser}
+                  onAdminLogin={(session) => {
+                    setAdminSession(session);
+                    setView('admin');
+                  }}
+                />
+              )}
+            </Suspense>
           )}
         </m.div>
       </main>

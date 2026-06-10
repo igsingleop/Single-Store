@@ -4,6 +4,9 @@ import { CreditCard, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { addOrder, saveCart } from '../utils/db';
 import { getUserProfileDetails } from '../utils/auth';
 
+// Helpers outside the component to keep the component pure for ESLint
+const getTimestamp = () => Date.now();
+
 export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) {
   const [email, setEmail] = useState(user ? user.email || '' : '');
   const [fname, setFname] = useState(() => {
@@ -23,6 +26,7 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
   const [city, setCity] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [phone, setPhone] = useState('');
 
   // Load custom profile details for auto-prefill
   useEffect(() => {
@@ -35,6 +39,7 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
             if (profile.address) setAddress(profile.address);
             if (profile.city) setCity(profile.city);
             if (profile.pinCode) setPinCode(profile.pinCode);
+            if (profile.phone) setPhone(profile.phone);
           }
         } catch (e) {
           console.error("Error pre-filling checkout details", e);
@@ -77,7 +82,7 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
         body: JSON.stringify({
           amount: amountInPaise,
           currency: 'INR',
-          receipt: `receipt_${Date.now()}`,
+          receipt: `receipt_${getTimestamp()}`,
         }),
       });
 
@@ -101,7 +106,6 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
         currency: orderData.currency,
         name: "Single Store",
         description: "Wall Posters Purchase",
-        image: "https://via.placeholder.com/150?text=Single+Store",
         order_id: orderData.order_id,
         handler: async function (paymentResponse) {
           // Step 3: Verify Payment Signature on backend
@@ -135,7 +139,7 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
         prefill: {
           name: `${fname} ${lname}`,
           email: email,
-          contact: "9999999999"
+          contact: phone || "9876543210"
         },
         theme: {
           color: "#3B82F6"
@@ -174,7 +178,7 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
       date: new Date().toISOString(),
       items: cart,
       total: total,
-      status: 'Pending'
+      status: 'Placed'
     };
 
     // Save order in database and empty the cart
@@ -228,18 +232,33 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
               <span>Contact Information</span>
             </h3>
             <form onSubmit={handleCheckoutSubmit} className="space-y-5">
-              <div>
-                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="9876543210"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
               </div>
 
               <h4 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mt-8 mb-4">
@@ -335,7 +354,7 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
                   <CreditCard className="w-5 h-5 text-blue-500" />
                   <span>Payment Gateway</span>
                 </h4>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-6">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-4">
                   Payments are secure and processed with Razorpay.
                 </p>
 
@@ -350,6 +369,12 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
                 >
                   {loading ? 'Processing Transaction...' : `Pay ${formatPrice(total)} with Razorpay`}
                 </motion.button>
+
+                {!import.meta.env.VITE_RAZORPAY_KEY_ID && (
+                  <p className="text-[10px] text-zinc-455 dark:text-zinc-500 font-semibold text-center mt-2.5">
+                    ℹ️ Razorpay API credentials are not set. Simulated demo checkout will be used.
+                  </p>
+                )}
               </div>
             </form>
           </div>

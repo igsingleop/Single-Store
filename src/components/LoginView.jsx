@@ -181,24 +181,8 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
     <div className="w-full max-w-lg mx-auto px-6 py-12 relative">
       {/* Background Blobs for Premium Aesthetic */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <motion.div
-          animate={{
-            x: [0, 20, -20, 0],
-            y: [0, -30, 20, 0],
-            scale: [1, 1.1, 0.9, 1]
-          }}
-          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-blue-500/10 dark:bg-blue-600/5 blur-2xl"
-        />
-        <motion.div
-          animate={{
-            x: [0, -20, 20, 0],
-            y: [0, 30, -20, 0],
-            scale: [1, 0.9, 1.1, 1]
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -bottom-10 -right-10 w-64 h-64 rounded-full bg-indigo-500/10 dark:bg-indigo-600/5 blur-2xl"
-        />
+        <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-blue-500/10 dark:bg-blue-600/5 blur-2xl animate-blob-1" />
+        <div className="absolute -bottom-10 -right-10 w-64 h-64 rounded-full bg-indigo-500/10 dark:bg-indigo-600/5 blur-2xl animate-blob-2" />
       </div>
 
       <motion.div

@@ -4,8 +4,14 @@ import AuthPage from './components/admin/AuthPage';
 import AdminPanel from './components/admin/AdminPanel';
 
 export default function AdminApp() {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(() => {
+    try {
+      const savedSession = localStorage.getItem('SINGLESTORE_ADMIN_SESSION');
+      return savedSession ? JSON.parse(savedSession) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Theme state
   const [theme, setTheme] = useState(() => {
@@ -13,15 +19,6 @@ export default function AdminApp() {
     if (saved) return saved;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
-
-  // Check login session on load
-  useEffect(() => {
-    const savedSession = localStorage.getItem('SINGLESTORE_ADMIN_SESSION');
-    if (savedSession) {
-      setSession(JSON.parse(savedSession));
-    }
-    setLoading(false);
-  }, []);
 
   // Sync theme
   useEffect(() => {
@@ -46,14 +43,6 @@ export default function AdminApp() {
     localStorage.removeItem('SINGLESTORE_ADMIN_SESSION');
     setSession(null);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-100 dark:bg-zinc-950 flex items-center justify-center text-sm font-bold text-zinc-500">
-        Verifying Session...
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-100 to-blue-100/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-indigo-950/20 text-zinc-800 dark:text-zinc-100 flex flex-col font-sans transition-colors duration-300">
