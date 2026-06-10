@@ -143,21 +143,25 @@ initDB();
 
 // --- Poster Operations ---
 export async function getPosters() {
+  let list = [];
   if (isFirebaseConfigured && firestoreDb) {
     try {
       const snapshot = await getDocs(collection(firestoreDb, 'posters'));
-      const list = [];
       snapshot.forEach(doc => {
         list.push({ ...doc.data(), id: doc.id });
       });
-      return list;
     } catch (e) {
       console.error("Firestore getPosters error:", e);
-      return safeParse(DB_POSTERS_KEY, defaultPosters);
+      list = safeParse(DB_POSTERS_KEY, defaultPosters);
     }
   } else {
-    return safeParse(DB_POSTERS_KEY, defaultPosters);
+    list = safeParse(DB_POSTERS_KEY, defaultPosters);
   }
+
+  if (list.length === 0) {
+    return defaultPosters;
+  }
+  return list;
 }
 
 export async function savePosters(posters) {
@@ -330,21 +334,29 @@ export function saveCart(cart) {
 
 // --- Admin Credentials / Auth Operations ---
 export async function getAdmins() {
+  let list = [];
   if (isFirebaseConfigured && firestoreDb) {
     try {
       const snapshot = await getDocs(collection(firestoreDb, 'admins'));
-      const list = [];
       snapshot.forEach(doc => {
         list.push(doc.data());
       });
-      return list;
     } catch (e) {
       console.error("Firestore getAdmins error:", e);
-      return safeParse(ADMIN_USERS_KEY, defaultAdmins);
+      list = safeParse(ADMIN_USERS_KEY, defaultAdmins);
     }
   } else {
-    return safeParse(ADMIN_USERS_KEY, defaultAdmins);
+    list = safeParse(ADMIN_USERS_KEY, defaultAdmins);
   }
+
+  // Ensure default admins are always present as a fallback
+  const merged = [...list];
+  for (const defAdmin of defaultAdmins) {
+    if (!merged.some(a => a.email.toLowerCase() === defAdmin.email.toLowerCase())) {
+      merged.push(defAdmin);
+    }
+  }
+  return merged;
 }
 
 export async function registerAdmin(admin) {
@@ -372,21 +384,30 @@ export async function registerAdmin(admin) {
 
 // --- Coupon Operations ---
 export async function getCoupons() {
+  let list = [];
+  const defaultCoupons = [
+    { code: 'SS10', type: 'percentage', value: 10, minAmount: 0 },
+    { code: 'WELCOME50', type: 'flat', value: 50, minAmount: 499 }
+  ];
+
   if (isFirebaseConfigured && firestoreDb) {
     try {
       const snapshot = await getDocs(collection(firestoreDb, 'coupons'));
-      const list = [];
       snapshot.forEach(doc => {
         list.push(doc.data());
       });
-      return list;
     } catch (e) {
       console.error("Firestore getCoupons error:", e);
-      return safeParse(DB_COUPONS_KEY, []);
+      list = safeParse(DB_COUPONS_KEY, defaultCoupons);
     }
   } else {
-    return safeParse(DB_COUPONS_KEY, []);
+    list = safeParse(DB_COUPONS_KEY, defaultCoupons);
   }
+
+  if (list.length === 0) {
+    return defaultCoupons;
+  }
+  return list;
 }
 
 export async function addCoupon(coupon) {

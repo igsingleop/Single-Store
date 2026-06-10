@@ -35,5 +35,13 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false; // Block registration from general public in production
     }
+
+    // 5. Coupons Collection
+    // Anyone can read coupons to apply discounts.
+    // Admin panel can write coupons.
+    match /coupons/{couponCode} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }
