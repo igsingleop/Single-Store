@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Moon, ShoppingBag, User, Search, Menu, X } from 'lucide-react';
+import { Sun, Moon, ShoppingBag, Search, Menu, X, Heart, User } from 'lucide-react';
 
 export default function Navbar({
   currentView,
@@ -11,18 +11,10 @@ export default function Navbar({
   toggleCart,
   searchQuery,
   setSearchQuery,
-  user
+  wishlistCount,
+  user = null
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return parts[0][0].toUpperCase();
-  };
 
   return (
     <nav className="sticky top-0 z-40 w-full glass-panel border-b px-6 py-4 flex items-center justify-between shadow-sm">
@@ -61,16 +53,7 @@ export default function Navbar({
         >
           Shop All
         </button>
-        <button
-          onClick={() => setView('account')}
-          className={`font-medium transition-colors ${
-            currentView === 'account'
-              ? 'text-blue-600 dark:text-blue-400'
-              : 'text-zinc-600 dark:text-zinc-300 hover:text-blue-500'
-          }`}
-        >
-          My Account
-        </button>
+
       </div>
 
       {/* Search Input - Desktop */}
@@ -114,32 +97,28 @@ export default function Navbar({
           </motion.div>
         </motion.button>
 
-        {/* Account Button (Neomorphic) */}
+        {/* Wishlist Trigger (Neomorphic + Badge) */}
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => setView('account')}
-          className={`relative rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all duration-300 flex items-center justify-center ${
-            user ? 'p-1 bg-zinc-150 dark:bg-zinc-800' : 'p-2.5 bg-zinc-100 dark:bg-zinc-800'
-          } ${
-            currentView === 'account' ? 'text-blue-600 dark:text-blue-400 ring-2 ring-blue-500/20' : 'text-zinc-700 dark:text-zinc-200'
+          onClick={() => setView('wishlist')}
+          className={`p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in relative transition-all duration-300 ${
+            currentView === 'wishlist' ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-200'
           }`}
-          aria-label="Account"
+          aria-label="Wishlist"
         >
-          {user ? (
-            user.photoURL ? (
-              <img
-                src={user.photoURL}
-                alt={user.displayName || 'User'}
-                className="w-8 h-8 rounded-lg object-cover"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-[10px] font-black shadow-inner">
-                {getInitials(user.displayName || user.email)}
-              </div>
-            )
-          ) : (
-            <User className="w-5 h-5" />
-          )}
+          <Heart className={`w-5 h-5 ${currentView === 'wishlist' ? 'fill-rose-500 text-rose-500' : ''}`} />
+          <AnimatePresence>
+            {wishlistCount > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-r from-rose-500 to-red-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-md"
+              >
+                {wishlistCount}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </motion.button>
 
         {/* Cart Trigger (Neomorphic + Badge) */}
@@ -162,6 +141,18 @@ export default function Navbar({
               </motion.span>
             )}
           </AnimatePresence>
+        </motion.button>
+
+        {/* Profile Trigger (Neomorphic) */}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setView(user ? 'account' : 'login')}
+          className={`p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all duration-300 ${
+            currentView === 'account' || currentView === 'login' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-200'
+          }`}
+          aria-label="Profile"
+        >
+          <User className="w-5 h-5" />
         </motion.button>
 
         {/* Mobile menu toggle */}
@@ -200,12 +191,25 @@ export default function Navbar({
               Shop All
             </button>
             <button
-              onClick={() => { setView('account'); setIsMobileMenuOpen(false); }}
-              className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 ${
-                currentView === 'account' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-300'
+              onClick={() => { setView('wishlist'); setIsMobileMenuOpen(false); }}
+              className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between ${
+                currentView === 'wishlist' ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'
               }`}
             >
-              My Account
+              <span>Wishlist</span>
+              {wishlistCount > 0 && (
+                <span className="px-2 py-0.5 bg-rose-500 text-white text-[10px] rounded-full font-bold">
+                  {wishlistCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => { setView(user ? 'account' : 'login'); setIsMobileMenuOpen(false); }}
+              className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 ${
+                currentView === 'account' || currentView === 'login' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-750 dark:text-zinc-300'
+              }`}
+            >
+              {user ? 'My Profile' : 'Login / Account'}
             </button>
           </motion.div>
         )}

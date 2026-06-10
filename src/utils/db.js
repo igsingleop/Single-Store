@@ -6,14 +6,14 @@ import {
   doc, 
   updateDoc, 
   deleteDoc, 
-  query, 
-  orderBy 
+  query
 } from 'firebase/firestore';
 
 const DB_POSTERS_KEY = 'SINGLESTORE_POSTERS';
 const DB_ORDERS_KEY = 'SINGLESTORE_ORDERS';
 const DB_CART_KEY = 'SINGLESTORE_CART';
 const ADMIN_USERS_KEY = 'SINGLESTORE_ADMIN_USERS';
+const DB_COUPONS_KEY = 'SINGLESTORE_COUPONS';
 
 const defaultPosters = [
   {
@@ -95,6 +95,20 @@ export async function initDB() {
           await setDoc(doc(firestoreDb, 'admins', admin.email.toLowerCase()), admin);
         }
       }
+
+      // Seed default coupons if collection is empty
+      const couponsQ = query(collection(firestoreDb, 'coupons'));
+      const couponsSnapshot = await getDocs(couponsQ);
+      if (couponsSnapshot.empty) {
+        console.log("Seeding default coupons into Firestore...");
+        const defaultCoupons = [
+          { code: 'SS10', type: 'percentage', value: 10, minAmount: 0 },
+          { code: 'WELCOME50', type: 'flat', value: 50, minAmount: 499 }
+        ];
+        for (const coupon of defaultCoupons) {
+          await setDoc(doc(firestoreDb, 'coupons', coupon.code.toUpperCase()), coupon);
+        }
+      }
     } catch (e) {
       console.error("Firestore DB initialization / seeding error:", e);
     }
@@ -108,6 +122,13 @@ export async function initDB() {
     }
     if (!localStorage.getItem(ADMIN_USERS_KEY)) {
       localStorage.setItem(ADMIN_USERS_KEY, JSON.stringify(defaultAdmins));
+    }
+    if (!localStorage.getItem(DB_COUPONS_KEY)) {
+      const defaultCoupons = [
+        { code: 'SS10', type: 'percentage', value: 10, minAmount: 0 },
+        { code: 'WELCOME50', type: 'flat', value: 50, minAmount: 499 }
+      ];
+      localStorage.setItem(DB_COUPONS_KEY, JSON.stringify(defaultCoupons));
     }
   }
 
@@ -346,5 +367,66 @@ export async function registerAdmin(admin) {
       password: admin.password
     });
     localStorage.setItem(ADMIN_USERS_KEY, JSON.stringify(admins));
+  }
+}
+
+// --- Coupon Operations ---
+export async function getCoupons() {
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      const snapshot = await getDocs(collection(firestoreDb, 'coupons'));
+      const list = [];
+      snapshot.forEach(doc => {
+        list.push(doc.data());
+      });
+      return list;
+    } catch (e) {
+      console.error("Firestore getCoupons error:", e);
+      return safeParse(DB_COUPONS_KEY, []);
+    }
+  } else {
+    return safeParse(DB_COUPONS_KEY, []);
+  }
+}
+
+export async function addCoupon(coupon) {
+  const codeUpper = coupon.code.toUpperCase();
+  const formattedCoupon = {
+    code: codeUpper,
+    type: coupon.type,
+    value: parseFloat(coupon.value),
+    minAmount: parseFloat(coupon.minAmount || 0)
+  };
+
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      await setDoc(doc(firestoreDb, 'coupons', codeUpper), formattedCoupon);
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    } catch (e) {
+      console.error("Firestore addCoupon error:", e);
+    }
+  } else {
+    const coupons = safeParse(DB_COUPONS_KEY, []);
+    const filtered = coupons.filter(c => c.code !== codeUpper);
+    filtered.push(formattedCoupon);
+    localStorage.setItem(DB_COUPONS_KEY, JSON.stringify(filtered));
+    window.dispatchEvent(new Event('singlestore_db_update'));
+  }
+}
+
+export async function deleteCoupon(code) {
+  const codeUpper = code.toUpperCase();
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      await deleteDoc(doc(firestoreDb, 'coupons', codeUpper));
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    } catch (e) {
+      console.error("Firestore deleteCoupon error:", e);
+    }
+  } else {
+    const coupons = safeParse(DB_COUPONS_KEY, []);
+    const filtered = coupons.filter(c => c.code !== codeUpper);
+    localStorage.setItem(DB_COUPONS_KEY, JSON.stringify(filtered));
+    window.dispatchEvent(new Event('singlestore_db_update'));
   }
 }

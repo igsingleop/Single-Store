@@ -1,22 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp,
   Package,
   ShoppingBag,
-  Plus,
   Trash2,
   Edit3,
   DollarSign,
   Grid,
-  CheckCircle,
-  FileText,
   Upload,
   Download,
   Database,
-  AlertTriangle,
   LogOut,
-  ArrowLeft
+  ArrowLeft,
+  Ticket
 } from 'lucide-react';
 import {
   getPosters,
@@ -26,7 +23,10 @@ import {
   getOrders,
   updateOrderStatus,
   savePosters,
-  deleteOrder
+  deleteOrder,
+  getCoupons,
+  addCoupon,
+  deleteCoupon
 } from '../../utils/db';
 
 export default function AdminPanel({ session, onLogout, onBackToStore = () => window.location.href = '/' }) {
@@ -34,6 +34,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const [activeTab, setActiveTab] = useState('inventory');
   const [posters, setPosters] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [coupons, setCoupons] = useState([]);
 
   // Form states for creating/editing poster
   const [editingId, setEditingId] = useState(null);
@@ -47,13 +48,21 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   // Custom image input mode: file upload or external URL
   const [imageInputMode, setImageInputMode] = useState('file'); // 'file' or 'url'
 
+  // Coupon form states
+  const [couponCode, setCouponCode] = useState('');
+  const [couponType, setCouponType] = useState('percentage');
+  const [couponValue, setCouponValue] = useState('');
+  const [couponMinAmount, setCouponMinAmount] = useState('');
+
   useEffect(() => {
     // Initial fetch
     const fetchAllData = async () => {
       const dbPosters = await getPosters();
       const dbOrders = await getOrders();
+      const dbCoupons = await getCoupons();
       setPosters(dbPosters);
       setOrders(dbOrders);
+      setCoupons(dbCoupons);
     };
     fetchAllData();
 
@@ -236,6 +245,30 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
     }
   };
 
+  const handleCouponSubmit = async (e) => {
+    e.preventDefault();
+    if (!couponCode || !couponValue) return;
+
+    await addCoupon({
+      code: couponCode.trim().toUpperCase(),
+      type: couponType,
+      value: parseFloat(couponValue),
+      minAmount: parseFloat(couponMinAmount || 0)
+    });
+
+    setCouponCode('');
+    setCouponValue('');
+    setCouponMinAmount('');
+    alert("Coupon added successfully!");
+  };
+
+  const handleDeleteCoupon = async (code) => {
+    if (window.confirm(`Are you sure you want to delete coupon ${code}?`)) {
+      await deleteCoupon(code);
+      alert("Coupon deleted successfully!");
+    }
+  };
+
   // --- BULK OPERATIONS ---
   const handleBulkExport = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(posters, null, 2));
@@ -328,6 +361,18 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
         >
           <ShoppingBag className="w-4 h-4" />
           <span>Orders Manager</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('coupons')}
+          className={`flex-1 lg:flex-none px-4 py-3 rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2.5 transition-all duration-300 ${
+            activeTab === 'coupons'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55'
+          }`}
+        >
+          <Ticket className="w-4 h-4" />
+          <span>Coupons Manager</span>
         </button>
 
         <button
@@ -842,7 +887,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                       <td className="py-3 text-right">
                         <div className="inline-flex gap-2">
                           <button
-                            onClick={() => alert(`Order details:\nItems:\n${o.items.map(i => `- ${i.title} (${i.size}, ${i.frame})`).join('\n')}`)}
+                            onClick={() => alert(`Order details:\nItems:\n${o.items.map(i => `- ${i.title} (${i.size}, ${i.frame}) x${i.quantity || 1}`).join('\n')}`)}
                             className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-semibold transition-colors"
                           >
                             Details
@@ -868,6 +913,139 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                   )}
                 </tbody>
               </table>
+            </motion.div>
+          )}
+
+          {activeTab === 'coupons' && (
+            <motion.div
+              key="coupons"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start font-sans"
+            >
+              {/* Left Column: Create Coupon Form */}
+              <div className="space-y-6 xl:col-span-1">
+                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md h-fit">
+                  <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
+                    Add New Coupon
+                  </h3>
+                  <form onSubmit={handleCouponSubmit} className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                        Coupon Code *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. WELCOME10"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                        Discount Type *
+                      </label>
+                      <select
+                        value={couponType}
+                        onChange={(e) => setCouponType(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer font-sans"
+                      >
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="flat">Flat Amount (Rs.)</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                          Discount Value *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          placeholder={couponType === 'percentage' ? "10" : "50"}
+                          value={couponValue}
+                          onChange={(e) => setCouponValue(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                          Min. Order (₹)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="0"
+                          value={couponMinAmount}
+                          onChange={(e) => setCouponMinAmount(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-colors mt-2"
+                    >
+                      Add Coupon Code
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Right Column: Coupons List */}
+              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md xl:col-span-2 overflow-x-auto h-fit">
+                <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
+                  Active Store Coupons ({coupons.length})
+                </h3>
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold">
+                      <th className="pb-3">Code</th>
+                      <th className="pb-3">Type</th>
+                      <th className="pb-3">Value</th>
+                      <th className="pb-3">Min. Purchase</th>
+                      <th className="pb-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200/40 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">
+                    {coupons.map((c) => (
+                      <tr key={c.code} className="group">
+                        <td className="py-3 font-mono font-bold text-blue-600 dark:text-blue-400">{c.code}</td>
+                        <td className="py-3 capitalize">{c.type}</td>
+                        <td className="py-3 font-semibold font-mono">
+                          {c.type === 'percentage' ? `${c.value}%` : `Rs. ${parseFloat(c.value).toFixed(2)}`}
+                        </td>
+                        <td className="py-3 font-semibold font-mono">
+                          {c.minAmount > 0 ? `Rs. ${parseFloat(c.minAmount).toFixed(2)}` : 'No Minimum'}
+                        </td>
+                        <td className="py-3 text-right">
+                          <button
+                            onClick={() => handleDeleteCoupon(c.code)}
+                            className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white transition-colors"
+                            aria-label="Delete coupon"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {coupons.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-6 text-center text-zinc-500 dark:text-zinc-500">
+                          No coupons found. Add some coupon codes above!
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

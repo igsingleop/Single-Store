@@ -149,7 +149,7 @@ export async function loginWithGoogle() {
       return userCredential.user;
     } catch (error) {
       if (error.code === 'auth/unauthorized-domain') {
-        throw new Error(`This domain (${window.location.hostname}) is not authorized in Firebase. Please add it to your Firebase Console under Authentication > Settings > Authorized domains.`);
+        throw new Error(`This domain (${window.location.hostname}) is not authorized in Firebase. Please add it to your Firebase Console under Authentication > Settings > Authorized domains.`, { cause: error });
       }
       if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
         console.warn("Google Auth popup was blocked or cancelled. Falling back to signInWithRedirect...");
@@ -218,22 +218,7 @@ export async function getUserProfileDetails(uid, defaultEmail) {
   };
 }
 
-function dataURLtoBlob(dataurl) {
-  try {
-    const arr = dataurl.split(',');
-    const mime = arr[0].match(/:(.*?);/)[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-  } catch (e) {
-    console.error("Failed to parse base64 data url to blob:", e);
-    return null;
-  }
-}
+
 
 export async function updateUserProfileDetails(uid, profileData) {
   let finalPhotoURL = profileData.photoURL || '';

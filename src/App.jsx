@@ -4,13 +4,15 @@ import {
   getPosters,
   getCart,
   saveCart,
-  initDB
+  initDB,
+  getCoupons
 } from './utils/db';
-import { subscribeAuth, logout } from './utils/auth';
+
 
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import ShopView from './components/ShopView';
+import WishlistView from './components/WishlistView';
 import ProductDetailModal from './components/ProductDetailModal';
 import CartDrawer from './components/CartDrawer';
 import PosterCard from './components/PosterCard';
@@ -18,9 +20,9 @@ import { ArrowRight, ShieldCheck, Mail, ShieldAlert, ArrowLeft, Sun, Moon } from
 
 // Lazy-loaded components for optimal bundle size and CPU execution time
 const CheckoutView = lazy(() => import('./components/CheckoutView'));
-const AccountView = lazy(() => import('./components/AccountView'));
 const LoginView = lazy(() => import('./components/LoginView'));
 const AdminPanel = lazy(() => import('./components/admin/AdminPanel'));
+const AccountView = lazy(() => import('./components/AccountView'));
 
 export default function App() {
   const [currentView, setView] = useState('home');
@@ -44,6 +46,18 @@ export default function App() {
   // Core reactive data states
   const [posters, setPosters] = useState([]);
   const [cart, setCart] = useState([]);
+  const [coupons, setCoupons] = useState([]);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+
+  // Wishlist state
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      const saved = localStorage.getItem('SINGLESTORE_WISHLIST');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Theme state
   const [theme, setTheme] = useState(() => {
@@ -66,6 +80,8 @@ export default function App() {
       const dbPosters = await getPosters();
       setPosters(dbPosters);
       setCart(getCart());
+      const dbCoupons = await getCoupons();
+      setCoupons(dbCoupons);
     };
     loadInitialData();
 
@@ -73,9 +89,11 @@ export default function App() {
       const dbPosters = await getPosters();
       setPosters(dbPosters);
       setCart(getCart());
+      const dbCoupons = await getCoupons();
+      setCoupons(dbCoupons);
     };
     const handleStorageChange = (e) => {
-      if (e.key === 'SINGLESTORE_POSTERS' || e.key === 'SINGLESTORE_ORDERS') {
+      if (e.key === 'SINGLESTORE_POSTERS' || e.key === 'SINGLESTORE_ORDERS' || e.key === 'SINGLESTORE_COUPONS') {
         handleDbUpdate();
       }
     };
@@ -87,13 +105,35 @@ export default function App() {
     };
   }, []);
 
-  // Subscribe to customer auth changes
+  // Monitor applied coupon validity relative to cart subtotal updates
   useEffect(() => {
-    const unsubscribe = subscribeAuth((loggedInUser) => {
-      setUser(loggedInUser);
-    });
+    if (appliedCoupon) {
+      const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price) * (item.quantity || 1), 0);
+      if (subtotal < appliedCoupon.minAmount) {
+        setTimeout(() => {
+          setAppliedCoupon(null);
+          setToastMessage(`Coupon ${appliedCoupon.code} removed: subtotal fell below Rs. ${appliedCoupon.minAmount}`);
+          setToastVisible(true);
+        }, 0);
+        const timer = setTimeout(() => {
+          setToastVisible(false);
+        }, 3500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [cart, appliedCoupon]);
+
+  // Handle URL hash changes to load the hidden admin login view (#admin or #login)
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#admin' || window.location.hash === '#login') {
+        setView('login');
+      }
+    };
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
     return () => {
-      if (typeof unsubscribe === 'function') unsubscribe();
+      window.removeEventListener('hashchange', handleHashChange);
     };
   }, []);
 
@@ -108,7 +148,20 @@ export default function App() {
     localStorage.setItem('singlestore_theme', theme);
   }, [theme]);
 
+  // Wishlist synchronization effect
+  useEffect(() => {
+    localStorage.setItem('SINGLESTORE_WISHLIST', JSON.stringify(wishlist));
+  }, [wishlist]);
 
+  const handleToggleWishlist = (posterId) => {
+    setWishlist(prev => {
+      if (prev.includes(posterId)) {
+        return prev.filter(id => id !== posterId);
+      } else {
+        return [...prev, posterId];
+      }
+    });
+  };
 
   const handleAdminLogout = () => {
     localStorage.removeItem('SINGLESTORE_ADMIN_SESSION');
@@ -120,7 +173,7 @@ export default function App() {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  const handleAddToCart = (posterId, size = '18x24"', frame = 'Print Only') => {
+  const handleAddToCart = (posterId, size = '18x24"', frame = 'Print Only', quantity = 1) => {
     const poster = posters.find(p => String(p.id) === String(posterId));
     if (!poster) return;
 
@@ -133,18 +186,29 @@ export default function App() {
     if (frame.includes('Frame')) basePrice += 15;
 
     const currentCart = getCart();
-    const newCartItem = {
-      cartId: Date.now().toString() + Math.random().toString(36).substring(2, 6),
-      posterId: poster.id,
-      title: poster.title,
-      image: poster.image,
-      price: basePrice,
-      size,
-      frame
-    };
+    const existingIndex = currentCart.findIndex(
+      item => String(item.posterId) === String(posterId) && item.size === size && item.frame === frame
+    );
 
-    const updatedCart = [...currentCart, newCartItem];
+    let updatedCart;
+    if (existingIndex > -1) {
+      updatedCart = [...currentCart];
+      updatedCart[existingIndex].quantity = (updatedCart[existingIndex].quantity || 1) + quantity;
+    } else {
+      const newCartItem = {
+        cartId: Date.now().toString() + Math.random().toString(36).substring(2, 6),
+        posterId: poster.id,
+        title: poster.title,
+        image: poster.image,
+        price: basePrice,
+        size,
+        frame,
+        quantity
+      };
+      updatedCart = [...currentCart, newCartItem];
+    }
     saveCart(updatedCart);
+    setCart(updatedCart);
 
     // Show toast message
     setToastMessage(`${poster.title} added to cart!`);
@@ -161,16 +225,26 @@ export default function App() {
     const currentCart = getCart();
     const updatedCart = currentCart.filter(item => item.cartId !== cartId);
     saveCart(updatedCart);
+    setCart(updatedCart);
+  };
+
+  const handleUpdateCartQuantity = (cartId, newQty) => {
+    if (newQty <= 0) {
+      handleRemoveFromCart(cartId);
+    } else {
+      const currentCart = getCart();
+      const updatedCart = currentCart.map(item =>
+        item.cartId === cartId ? { ...item, quantity: newQty } : item
+      );
+      saveCart(updatedCart);
+      setCart(updatedCart);
+    }
   };
 
   const handleCheckoutTrigger = () => {
     setView('checkout');
   };
 
-  const handleLogout = async () => {
-    await logout();
-    setView('home');
-  };
 
   const handleOrderConfirmed = (order) => {
     setCompletedOrder(order);
@@ -252,12 +326,12 @@ export default function App() {
         setView={setView}
         theme={theme}
         toggleTheme={toggleTheme}
-        cartCount={cart.length}
+        cartCount={cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
         toggleCart={() => setIsCartOpen(!isCartOpen)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        wishlistCount={wishlist.length}
         user={user}
-        adminSession={adminSession}
       />
 
       {/* Main Content Area */}
@@ -300,6 +374,8 @@ export default function App() {
                       poster={poster}
                       onSelect={setSelectedPosterId}
                       onAddToCart={handleAddToCart}
+                      isWishlisted={wishlist.includes(poster.id)}
+                      onToggleWishlist={handleToggleWishlist}
                     />
                   ))}
                 </div>
@@ -324,6 +400,19 @@ export default function App() {
               searchQuery={searchQuery}
               onSelectPoster={setSelectedPosterId}
               onAddToCart={handleAddToCart}
+              wishlist={wishlist}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          )}
+
+          {currentView === 'wishlist' && (
+            <WishlistView
+              posters={posters}
+              wishlist={wishlist}
+              onToggleWishlist={handleToggleWishlist}
+              onSelectPoster={setSelectedPosterId}
+              onAddToCart={handleAddToCart}
+              setView={setView}
             />
           )}
 
@@ -335,24 +424,36 @@ export default function App() {
                 setView={setView}
                 onOrderConfirmed={handleOrderConfirmed}
                 user={user}
+                coupons={coupons}
+                appliedCoupon={appliedCoupon}
+                setAppliedCoupon={setAppliedCoupon}
+              />
+            </Suspense>
+          )}
+
+          {currentView === 'login' && (
+            <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center text-xs font-semibold text-zinc-500">Loading Login...</div>}>
+              <LoginView
+                setView={setView}
+                onLoginSuccess={setUser}
+                onAdminLogin={(session) => {
+                  setAdminSession(session);
+                  setView('admin');
+                }}
               />
             </Suspense>
           )}
 
           {currentView === 'account' && (
             <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center text-xs font-semibold text-zinc-500">Loading Account...</div>}>
-              {user ? (
-                <AccountView setView={setView} user={user} onLogout={handleLogout} />
-              ) : (
-                <LoginView
-                  setView={setView}
-                  onLoginSuccess={setUser}
-                  onAdminLogin={(session) => {
-                    setAdminSession(session);
-                    setView('admin');
-                  }}
-                />
-              )}
+              <AccountView
+                setView={setView}
+                user={user}
+                onLogout={() => {
+                  setUser(null);
+                  setView('home');
+                }}
+              />
             </Suspense>
           )}
         </m.div>
@@ -417,11 +518,11 @@ export default function App() {
               <button
                 onClick={() => {
                   setCompletedOrder(null);
-                  setView('account');
+                  setView('home');
                 }}
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-sm shadow-md transition-colors"
               >
-                Track Shipping In Account
+                Continue Shopping
               </button>
             </m.div>
           </m.div>
@@ -435,6 +536,10 @@ export default function App() {
         cart={cart}
         onRemove={handleRemoveFromCart}
         onCheckout={handleCheckoutTrigger}
+        onUpdateQuantity={handleUpdateCartQuantity}
+        coupons={coupons}
+        appliedCoupon={appliedCoupon}
+        onApplyCoupon={setAppliedCoupon}
       />
 
       {/* Product Detail Modal */}
@@ -465,18 +570,12 @@ export default function App() {
             <h4 className="font-outfit text-sm font-bold text-zinc-800 dark:text-white uppercase tracking-wider">
               Quick Links
             </h4>
-            <ul className="text-xs space-y-2 text-zinc-500 dark:text-zinc-400">
+            <ul className="text-xs space-y-2 text-zinc-550 dark:text-zinc-400">
               <li>
                 <button onClick={() => { setView('shop'); }} className="hover:text-blue-600 transition-colors">
                   Shop All Posters
                 </button>
               </li>
-              <li>
-                <button onClick={() => { setView('account'); }} className="hover:text-blue-600 transition-colors">
-                  Client Account
-                </button>
-              </li>
-
             </ul>
           </div>
 

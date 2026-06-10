@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Eye, Filter } from 'lucide-react';
 import PosterCard from './PosterCard';
 
-export default function ShopView({ posters, searchQuery, onSelectPoster, onAddToCart }) {
+export default function ShopView({ posters, searchQuery, onSelectPoster, onAddToCart, wishlist = [], onToggleWishlist }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   // Extract all categories dynamically from posters
@@ -95,6 +94,8 @@ export default function ShopView({ posters, searchQuery, onSelectPoster, onAddTo
                 poster={poster}
                 onSelect={onSelectPoster}
                 onAddToCart={onAddToCart}
+                isWishlisted={wishlist.includes(poster.id)}
+                onToggleWishlist={onToggleWishlist}
               />
             ))}
           </motion.div>

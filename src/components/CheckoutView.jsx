@@ -7,7 +7,15 @@ import { getUserProfileDetails } from '../utils/auth';
 // Helpers outside the component to keep the component pure for ESLint
 const getTimestamp = () => Date.now();
 
-export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) {
+export default function CheckoutView({
+  cart,
+  setView,
+  onOrderConfirmed,
+  user,
+  coupons = [],
+  appliedCoupon = null,
+  setAppliedCoupon
+}) {
   const [email, setEmail] = useState(user ? user.email || '' : '');
   const [fname, setFname] = useState(() => {
     if (user && user.displayName) {
@@ -27,6 +35,10 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
   const [pinCode, setPinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState('');
+
+  const [couponCode, setCouponCodeState] = useState('');
+  const [couponError, setCouponError] = useState('');
+  const [couponSuccess, setCouponSuccess] = useState('');
 
   // Load custom profile details for auto-prefill
   useEffect(() => {
@@ -60,7 +72,47 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
     };
   }, []);
 
-  const total = cart.reduce((sum, item) => sum + parseFloat(item.price), 0);
+  const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price) * (item.quantity || 1), 0);
+
+  const getDiscount = () => {
+    if (!appliedCoupon) return 0;
+    if (appliedCoupon.type === 'percentage') {
+      return (subtotal * appliedCoupon.value) / 100;
+    } else {
+      return appliedCoupon.value;
+    }
+  };
+
+  const discount = getDiscount();
+  const grandTotal = Math.max(0, subtotal - discount);
+
+  const handleApplyCoupon = (e) => {
+    e.preventDefault();
+    setCouponError('');
+    setCouponSuccess('');
+    
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code.');
+      return;
+    }
+    
+    const codeUpper = couponCode.trim().toUpperCase();
+    const couponObj = coupons.find(c => c.code.toUpperCase() === codeUpper);
+    
+    if (!couponObj) {
+      setCouponError('Coupon code not found.');
+      return;
+    }
+    
+    if (subtotal < couponObj.minAmount) {
+      setCouponError(`Minimum order value for ${couponObj.code} is Rs. ${couponObj.minAmount.toFixed(2)}`);
+      return;
+    }
+    
+    setAppliedCoupon(couponObj);
+    setCouponSuccess(`Coupon ${couponObj.code} applied successfully!`);
+    setCouponCodeState('');
+  };
 
   const formatPrice = (price) => {
     return 'Rs. ' + parseFloat(price).toFixed(2);
@@ -71,7 +123,7 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
     setLoading(true);
 
     try {
-      const amountInPaise = Math.round(total * 100);
+      const amountInPaise = Math.round(grandTotal * 100);
       
       // Step 1: Create Order on backend
       const response = await fetch('/api/create-order', {
@@ -177,7 +229,7 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
       customerEmail: email,
       date: new Date().toISOString(),
       items: cart,
-      total: total,
+      total: grandTotal,
       status: 'Placed'
     };
 
@@ -199,6 +251,24 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
         <button
           onClick={() => setView('shop')}
           className="mt-6 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition-colors"
+        >
+          Explore Shop
+        </button>
+      </div>
+    );
+  }
+
+  if (subtotal < 249) {
+    return (
+      <div className="max-w-md mx-auto py-16 px-6 text-center animate-fade-in">
+        <div className="text-4xl mb-4 text-rose-500">⚠️</div>
+        <h2 className="font-outfit text-xl font-bold text-zinc-900 dark:text-white">Minimum Order Value Required</h2>
+        <p className="text-zinc-550 dark:text-zinc-400 mt-2 text-sm leading-relaxed">
+          Your current order subtotal is {formatPrice(subtotal)}. The minimum order value required to checkout is Rs. 249.00. Please add more items to your cart.
+        </p>
+        <button
+          onClick={() => setView('shop')}
+          className="mt-6 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition-colors shadow-lg shadow-blue-500/25"
         >
           Explore Shop
         </button>
@@ -362,12 +432,12 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || subtotal < 249}
                   className={`w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/25 transition-all ${
-                    loading ? 'opacity-85 cursor-not-allowed' : ''
+                    loading || subtotal < 249 ? 'opacity-85 cursor-not-allowed' : ''
                   }`}
                 >
-                  {loading ? 'Processing Transaction...' : `Pay ${formatPrice(total)} with Razorpay`}
+                  {loading ? 'Processing Transaction...' : `Pay ${formatPrice(grandTotal)} with Razorpay`}
                 </motion.button>
 
                 {!import.meta.env.VITE_RAZORPAY_KEY_ID && (
@@ -402,32 +472,103 @@ export default function CheckoutView({ cart, setView, onOrderConfirmed, user }) 
                   className="w-14 h-18 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white"
                 />
                 <div className="flex-1">
-                  <h4 className="font-outfit text-sm font-bold text-zinc-900 dark:text-white line-clamp-1">
-                    {item.title}
-                  </h4>
+                  <div className="flex justify-between items-start gap-2">
+                    <h4 className="font-outfit text-sm font-bold text-zinc-900 dark:text-white line-clamp-1">
+                      {item.title}
+                    </h4>
+                    <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 font-inter">
+                      x{item.quantity || 1}
+                    </span>
+                  </div>
                   <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
                     {item.size} / {item.frame}
                   </p>
-                  <span className="font-inter text-xs font-extrabold text-zinc-700 dark:text-zinc-300 block mt-1">
-                    {formatPrice(item.price)}
-                  </span>
+                  <div className="flex justify-between items-baseline mt-1">
+                    <span className="font-inter text-xs font-extrabold text-zinc-700 dark:text-zinc-300">
+                      {formatPrice(parseFloat(item.price) * (item.quantity || 1))}
+                    </span>
+                    {(item.quantity || 1) > 1 && (
+                      <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-medium">
+                        {formatPrice(item.price)} each
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
 
           <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
-            <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400 font-semibold">
+            <div className="flex justify-between text-sm text-zinc-550 dark:text-zinc-400 font-semibold">
+              <span>Subtotal</span>
+              <span className="font-mono">{formatPrice(subtotal)}</span>
+            </div>
+
+            {appliedCoupon ? (
+              <div className="flex justify-between items-center text-sm text-emerald-600 dark:text-emerald-450 font-semibold bg-emerald-500/10 dark:bg-emerald-950/20 px-3 py-2 rounded-xl border border-emerald-500/20">
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
+                    {appliedCoupon.code}
+                  </span>
+                  <span className="text-xs">Applied</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-mono">-{formatPrice(discount)}</span>
+                  <button
+                    type="button"
+                    onClick={() => setAppliedCoupon(null)}
+                    className="text-red-500 hover:text-red-400 text-xs font-bold hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="pt-1">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Coupon Code"
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCodeState(e.target.value);
+                      setCouponError('');
+                      setCouponSuccess('');
+                    }}
+                    className="flex-1 px-3 py-2 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-mono uppercase"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    className="px-3.5 py-2 rounded-xl bg-zinc-850 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white font-bold text-xs shadow-md transition-colors"
+                  >
+                    Apply
+                  </button>
+                </div>
+                {couponError && (
+                  <p className="text-[10px] text-red-500 font-bold mt-1 pl-1">
+                    {couponError}
+                  </p>
+                )}
+                {couponSuccess && (
+                  <p className="text-[10px] text-emerald-500 font-bold mt-1 pl-1">
+                    {couponSuccess}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-between text-sm text-zinc-550 dark:text-zinc-400 font-semibold pt-1">
               <span>Shipping</span>
               <span className="text-emerald-500">Free Shipping</span>
             </div>
-            <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400 font-semibold">
+            <div className="flex justify-between text-sm text-zinc-550 dark:text-zinc-400 font-semibold">
               <span>GST / Taxes</span>
               <span>Included</span>
             </div>
             <div className="flex justify-between text-lg font-bold text-zinc-900 dark:text-white pt-2 border-t border-dashed border-zinc-200 dark:border-zinc-800">
               <span>Grand Total</span>
-              <span className="font-inter text-xl font-extrabold">{formatPrice(total)}</span>
+              <span className="font-inter text-xl font-extrabold">{formatPrice(grandTotal)}</span>
             </div>
           </div>
         </motion.div>

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, ShoppingBag, ShieldCheck, Truck, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { X, ShoppingBag, ShieldCheck, Truck, RefreshCw, Minus, Plus } from 'lucide-react';
 
 export default function ProductDetailModal({ posterId, posters, onClose, onAddToCart }) {
   const [selectedSize, setSelectedSize] = useState('18x24"');
   const [selectedFrame, setSelectedFrame] = useState('Print Only');
+  const [quantity, setQuantity] = useState(1);
 
   const poster = posters.find(p => String(p.id) === String(posterId));
   
@@ -23,7 +24,7 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
   const currentPrice = getCalculatedPrice();
 
   const handleAddToCart = () => {
-    onAddToCart(poster.id, selectedSize, selectedFrame);
+    onAddToCart(poster.id, selectedSize, selectedFrame, quantity);
     onClose();
   };
 
@@ -126,7 +127,7 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
             </div>
 
             {/* Frame Selector */}
-            <div className="mb-6">
+            <div className="mb-5">
               <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-2.5">
                 Framing Option
               </span>
@@ -147,6 +148,45 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Quantity Selector */}
+            <div className="mb-6">
+              <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-2.5">
+                Quantity
+              </span>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center rounded-xl bg-zinc-50 dark:bg-zinc-955/20 border border-zinc-200 dark:border-zinc-800 shadow-neo-in p-1">
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                    type="button"
+                    className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-850 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-750 transition-colors shadow-neo-out hover:shadow-neo-in flex items-center justify-center"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </motion.button>
+                  
+                  <span className="w-10 text-center text-xs font-extrabold text-zinc-900 dark:text-white font-inter">
+                    {quantity}
+                  </span>
+
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setQuantity(prev => prev + 1)}
+                    type="button"
+                    className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-850 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-750 transition-colors shadow-neo-out hover:shadow-neo-in flex items-center justify-center"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </motion.button>
+                </div>
+                {quantity > 1 && (
+                  <span className="text-xs text-zinc-500 dark:text-zinc-450 font-bold font-inter">
+                    Total: Rs. {(currentPrice * quantity).toFixed(2)}
+                  </span>
+                )}
               </div>
             </div>
           </div>

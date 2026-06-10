@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Sun, Moon, ShieldAlert, LogOut, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Sun, Moon, ShieldAlert, ArrowLeft } from 'lucide-react';
 import AuthPage from './components/admin/AuthPage';
 import AdminPanel from './components/admin/AdminPanel';
 

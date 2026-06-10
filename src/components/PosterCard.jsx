@@ -1,8 +1,7 @@
-import React from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Heart } from 'lucide-react';
 
-export default function PosterCard({ poster, onSelect, onAddToCart }) {
+export default function PosterCard({ poster, onSelect, onAddToCart, isWishlisted = false, onToggleWishlist }) {
   const hasDiscount = poster.discountPrice != null && String(poster.discountPrice) !== '' && !isNaN(parseFloat(poster.discountPrice));
   const activePrice = hasDiscount ? parseFloat(poster.discountPrice) : parseFloat(poster.price);
   const comparePrice = hasDiscount ? parseFloat(poster.price) : null;
@@ -34,7 +33,20 @@ export default function PosterCard({ poster, onSelect, onAddToCart }) {
               Sale
             </span>
           )}
-          <span className="absolute top-3 right-3 bg-white/70 dark:bg-black/50 backdrop-blur-md text-[9px] font-semibold text-zinc-800 dark:text-zinc-200 px-2 py-0.5 rounded border border-white/20 dark:border-white/10">
+          
+          {/* Wishlist toggle button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onToggleWishlist) onToggleWishlist(poster.id);
+            }}
+            className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-white/20 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 transition-colors shadow-md hover:scale-105"
+            aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          >
+            <Heart className={`w-4 h-4 transition-colors ${isWishlisted ? 'fill-rose-500 text-rose-500' : 'text-zinc-700 dark:text-zinc-350 hover:text-rose-500'}`} />
+          </button>
+
+          <span className="absolute bottom-3 right-3 bg-white/70 dark:bg-black/50 backdrop-blur-md text-[9px] font-semibold text-zinc-800 dark:text-zinc-200 px-2 py-0.5 rounded border border-white/20 dark:border-white/10">
             {poster.category}
           </span>
         </div>
