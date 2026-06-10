@@ -5,6 +5,82 @@ import { loginWithEmail, registerWithEmail, loginWithGoogle } from '../utils/aut
 import { isFirebaseConfigured } from '../utils/firebase';
 import { getAdmins } from '../utils/db';
 
+// Helper to convert Firebase auth errors into user-friendly messages
+const getFriendlyErrorMessage = (error) => {
+  if (!error) return 'Authentication failed. Please check your credentials.';
+
+  const code = error.code || '';
+  const message = error.message || '';
+
+  // Check code first
+  if (code) {
+    switch (code) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        return 'Incorrect email or password. Please try again.';
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      case 'auth/user-disabled':
+        return 'This account has been disabled. Please contact support.';
+      case 'auth/too-many-requests':
+        return 'Too many unsuccessful login attempts. Please try again later.';
+      case 'auth/email-already-in-use':
+        return 'An account with this email already exists. Please sign in instead.';
+      case 'auth/weak-password':
+        return 'The password is too weak. Please use at least 6 characters.';
+      case 'auth/popup-closed-by-user':
+        return 'The sign-in window was closed before completing authentication.';
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your internet connection and try again.';
+      case 'auth/unauthorized-domain':
+        return `This domain (${window.location.hostname}) is not authorized in Firebase. Please add it to your Firebase Console.`;
+      default:
+        break;
+    }
+  }
+
+  // If code wasn't matched but message contains the code pattern
+  if (typeof message === 'string') {
+    if (message.includes('auth/invalid-credential') || 
+        message.includes('auth/wrong-password') || 
+        message.includes('auth/user-not-found')) {
+      return 'Incorrect email or password. Please try again.';
+    }
+    if (message.includes('auth/invalid-email')) {
+      return 'Please enter a valid email address.';
+    }
+    if (message.includes('auth/user-disabled')) {
+      return 'This account has been disabled. Please contact support.';
+    }
+    if (message.includes('auth/too-many-requests')) {
+      return 'Too many unsuccessful login attempts. Please try again later.';
+    }
+    if (message.includes('auth/email-already-in-use')) {
+      return 'An account with this email already exists. Please sign in instead.';
+    }
+    if (message.includes('auth/weak-password')) {
+      return 'The password is too weak. Please use at least 6 characters.';
+    }
+    if (message.includes('auth/popup-closed-by-user')) {
+      return 'The sign-in window was closed before completing authentication.';
+    }
+    if (message.includes('auth/network-request-failed')) {
+      return 'Network error. Please check your internet connection and try again.';
+    }
+    
+    // Clean up Firebase: Error (auth/xxx) messages into "xxx"
+    if (message.startsWith('Firebase: Error (')) {
+      const match = message.match(/\(([^)]+)\)/);
+      if (match && match[1]) {
+        return match[1].replace('auth/', '').replace(/-/g, ' ');
+      }
+    }
+  }
+
+  return error.message || 'Authentication failed. Please check your credentials.';
+};
+
 export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
   const [authTab, setAuthTab] = useState('login');
   const [name, setName] = useState('');
@@ -50,7 +126,7 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
       setTimeout(() => setView('account'), 800);
     } catch (error) {
       console.error(error);
-      setErrorMsg(error.message || 'Google authentication failed.');
+      setErrorMsg(getFriendlyErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -95,7 +171,7 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
       }
     } catch (error) {
       console.error(error);
-      setErrorMsg(error.message || 'Authentication failed. Please check your credentials.');
+      setErrorMsg(getFriendlyErrorMessage(error));
     } finally {
       setLoading(false);
     }
