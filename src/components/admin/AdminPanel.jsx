@@ -47,6 +47,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   
   // Custom image input mode: file upload or external URL
   const [imageInputMode, setImageInputMode] = useState('file'); // 'file' or 'url'
+  const [imageUploading, setImageUploading] = useState(false);
 
   // Coupon form states
   const [couponCode, setCouponCode] = useState('');
@@ -160,7 +161,40 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
 
         // Compress image to JPEG at 0.7 quality to conserve LocalStorage/memory quotas
         const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        setPosterImage(compressedBase64);
+        
+        setImageUploading(true);
+        fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            image: compressedBase64,
+            filename: file.name
+          })
+        })
+        .then(async (res) => {
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Upload failed with status ${res.status}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (data.success && data.url) {
+            setPosterImage(data.url);
+          } else {
+            throw new Error('Upload succeeded but no public URL returned');
+          }
+        })
+        .catch((err) => {
+          console.warn("Backblaze B2 upload failed, using local Base64 string fallback:", err);
+          alert("B2 storage not available or configured. Image saved to local session. (" + err.message + ")");
+          setPosterImage(compressedBase64);
+        })
+        .finally(() => {
+          setImageUploading(false);
+        });
       };
       img.src = evt.target.result;
     };
@@ -636,34 +670,43 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                           >
                             Image URL
                           </button>
-                        </div>
                       </div>
+                    </div>
 
-                      {imageInputMode === 'file' ? (
-                        <div className="relative group border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-blue-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          />
-                          {posterImage && posterImage.startsWith('data:image/') ? (
-                            <div className="text-center">
-                              <img
-                                src={posterImage}
-                                alt="Preview"
-                                className="w-16 h-20 object-cover rounded-md mx-auto mb-2 border border-zinc-200 dark:border-zinc-800 bg-white"
-                              />
-                              <span className="text-[9px] text-emerald-500 font-bold block">Image Uploaded</span>
-                            </div>
-                          ) : (
-                            <div className="text-center text-zinc-400">
-                              <Upload className="w-5 h-5 mx-auto mb-1 text-zinc-400" />
-                              <span className="text-[10px] font-semibold">Upload Poster Image</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
+                    {imageInputMode === 'file' ? (
+                      <div className="relative group border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-blue-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={imageUploading}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        {imageUploading ? (
+                          <div className="text-center text-blue-500">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto mb-1" />
+                            <span className="text-[10px] font-bold block">Uploading to B2 Cloud...</span>
+                          </div>
+                        ) : posterImage ? (
+                          <div className="text-center">
+                            <img
+                              src={posterImage}
+                              alt="Preview"
+                              className="w-16 h-20 object-cover rounded-md mx-auto mb-2 border border-zinc-200 dark:border-zinc-800 bg-white"
+                              onError={(e) => { e.target.src = 'https://via.placeholder.com/400x600?text=Preview+Error'; }}
+                            />
+                            <span className="text-[9px] text-emerald-500 font-bold block">
+                              {posterImage.startsWith('data:') ? 'Image Loaded (Local Session)' : 'Image Stored in B2 Cloud'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-center text-zinc-400">
+                            <Upload className="w-5 h-5 mx-auto mb-1 text-zinc-400" />
+                            <span className="text-[10px] font-semibold">Upload Poster Image</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
                         <div className="space-y-2">
                           <input
                             type="text"
@@ -703,9 +746,12 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                     <div className="flex gap-3 pt-2">
                       <button
                         type="submit"
-                        className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-colors"
+                        disabled={imageUploading}
+                        className={`flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-colors ${
+                          imageUploading ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
                       >
-                        {editingId ? 'Update Product' : 'Add Poster to Store'}
+                        {imageUploading ? 'Uploading Image...' : editingId ? 'Update Product' : 'Add Poster to Store'}
                       </button>
                       {editingId && (
                         <button
