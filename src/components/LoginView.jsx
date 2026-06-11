@@ -170,7 +170,7 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
             <Sparkles className="w-3.5 h-3.5" />
             <span>Premium Art Gallery</span>
           </div>
-          <h2 className="font-outfit text-3xl font-extrabold text-zinc-955 dark:text-white">
+          <h2 className="font-outfit text-3xl font-extrabold text-zinc-900 dark:text-white">
             {mode === 'signin' ? 'Welcome Back.' : 'Join Single Store.'}
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">

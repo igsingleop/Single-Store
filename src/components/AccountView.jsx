@@ -241,7 +241,7 @@ export default function AccountView({ setView, user, onLogout }) {
               className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
                 activeTab === 'profile'
                   ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-zinc-550 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-850'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
               }`}
             >
               <User className="w-4 h-4" />
@@ -252,7 +252,7 @@ export default function AccountView({ setView, user, onLogout }) {
               className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
                 activeTab === 'orders'
                   ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-zinc-550 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-850'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
               }`}
             >
               <Package className="w-4 h-4" />
@@ -276,16 +276,16 @@ export default function AccountView({ setView, user, onLogout }) {
                     {/* Header */}
                     <div className="flex justify-between items-center pb-4 border-b border-zinc-100 dark:border-zinc-800">
                       <div>
-                        <h3 className="font-outfit text-xl font-extrabold text-zinc-950 dark:text-white">
+                        <h3 className="font-outfit text-xl font-extrabold text-zinc-900 dark:text-white">
                           Profile Details
                         </h3>
-                        <p className="text-xs text-zinc-450 dark:text-zinc-400">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
                           Verify and manage your personal details
                         </p>
                       </div>
                       <button
                         onClick={enterEditMode}
-                        className="px-4 py-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-955 border border-blue-100 dark:border-blue-900/30 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                        className="px-4 py-2 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-100 dark:border-blue-900/30 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>Edit Details</span>
@@ -302,10 +302,10 @@ export default function AccountView({ setView, user, onLogout }) {
                         </div>
                         <div>
                           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Full Name</span>
-                          <span className="text-sm font-extrabold text-zinc-850 dark:text-zinc-100">{user.displayName || 'Not Set'}</span>
+                          <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-100">{user.displayName || 'Not Set'}</span>
                         </div>
                       </div>
-
+ 
                       {/* Phone Number */}
                       <div className="p-5 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-200/50 dark:border-zinc-800 rounded-2xl flex items-start gap-4 shadow-sm">
                         <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-500 shrink-0">
@@ -313,10 +313,10 @@ export default function AccountView({ setView, user, onLogout }) {
                         </div>
                         <div>
                           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Phone Number</span>
-                          <span className="text-sm font-extrabold text-zinc-850 dark:text-zinc-100">{details?.phone || 'Not Set'}</span>
+                          <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-100">{details?.phone || 'Not Set'}</span>
                         </div>
                       </div>
-
+ 
                       {/* Preferred Contact Email */}
                       <div className="p-5 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-200/50 dark:border-zinc-800 rounded-2xl flex items-start gap-4 shadow-sm">
                         <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-500 shrink-0">
@@ -324,10 +324,10 @@ export default function AccountView({ setView, user, onLogout }) {
                         </div>
                         <div>
                           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Contact Email</span>
-                          <span className="text-sm font-extrabold text-zinc-850 dark:text-zinc-100">{details?.contactEmail || user.email || 'Not Set'}</span>
+                          <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-100">{details?.contactEmail || user.email || 'Not Set'}</span>
                         </div>
                       </div>
-
+ 
                       {/* Date of Birth */}
                       <div className="p-5 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-200/50 dark:border-zinc-800 rounded-2xl flex items-start gap-4 shadow-sm">
                         <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 shrink-0">
@@ -335,7 +335,7 @@ export default function AccountView({ setView, user, onLogout }) {
                         </div>
                         <div>
                           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Date of Birth</span>
-                          <span className="text-sm font-extrabold text-zinc-850 dark:text-zinc-100">
+                          <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-100">
                             {details?.dob ? new Date(details.dob).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'Not Set'}
                           </span>
                         </div>
@@ -351,7 +351,7 @@ export default function AccountView({ setView, user, onLogout }) {
                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Primary Shipping Address</span>
                         {details?.address || details?.city || details?.pinCode ? (
                           <div className="space-y-0.5">
-                            <span className="text-sm font-extrabold text-zinc-850 dark:text-zinc-100 block">{details.address}</span>
+                            <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-100 block">{details.address}</span>
                             <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">
                               {details.city}, {details.pinCode}
                             </span>
@@ -376,10 +376,10 @@ export default function AccountView({ setView, user, onLogout }) {
                   >
                     {/* Form Header */}
                     <div className="pb-4 border-b border-zinc-100 dark:border-zinc-800">
-                      <h3 className="font-outfit text-xl font-extrabold text-zinc-955 dark:text-white">
+                      <h3 className="font-outfit text-xl font-extrabold text-zinc-900 dark:text-white">
                         Edit Profile Details
                       </h3>
-                      <p className="text-xs text-zinc-450 dark:text-zinc-450">
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
                         Update your profile values and save to finalize
                       </p>
                     </div>
@@ -613,7 +613,7 @@ export default function AccountView({ setView, user, onLogout }) {
                     <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     <span>Purchase History ({orders.length})</span>
                   </h3>
-                  <p className="text-xs text-zinc-450 dark:text-zinc-400">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     Track your orders, bills, and shipping status
                   </p>
                 </div>
@@ -641,7 +641,7 @@ export default function AccountView({ setView, user, onLogout }) {
                         className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl border border-zinc-200/50 dark:border-zinc-800 shadow-sm flex flex-col justify-between"
                       >
                         {/* Order Top Bar */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-zinc-200/50 dark:border-zinc-850 gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-zinc-200/50 dark:border-zinc-800 gap-3">
                           <div>
                             <div className="flex items-center gap-2.5">
                               <span className="text-xs font-black text-zinc-900 dark:text-white">
@@ -651,7 +651,7 @@ export default function AccountView({ setView, user, onLogout }) {
                                 {order.status}
                               </span>
                             </div>
-                            <div className="flex items-center space-x-1 text-[10px] text-zinc-450 dark:text-zinc-500 mt-1 font-medium">
+                            <div className="flex items-center space-x-1 text-[10px] text-zinc-500 dark:text-zinc-500 mt-1 font-medium">
                               <Clock className="w-3.5 h-3.5" />
                               <span>{new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}</span>
                             </div>
@@ -684,13 +684,13 @@ export default function AccountView({ setView, user, onLogout }) {
                               <img
                                 src={item.image}
                                 alt={item.title}
-                                className="w-10 h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-850 bg-white"
+                                className="w-10 h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white"
                               />
                               <div className="flex-1">
                                 <h4 className="font-outfit text-xs font-bold text-zinc-800 dark:text-white line-clamp-1">
                                   {item.title}
                                 </h4>
-                                <p className="text-[9px] text-zinc-450 dark:text-zinc-500 font-bold uppercase tracking-wider">
+                                <p className="text-[9px] text-zinc-500 dark:text-zinc-500 font-bold uppercase tracking-wider">
                                   Size: {item.size} / Frame: {item.frame}
                                 </p>
                               </div>

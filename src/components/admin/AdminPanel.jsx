@@ -93,7 +93,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
       case 'Placed':
         return 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400';
       case 'Order Received':
-        return 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-450';
+        return 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400';
       case 'Order Packed':
         return 'bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400';
       case 'Dispatch':
@@ -613,7 +613,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                         <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
                           Poster Image *
                         </label>
-                        <div className="flex bg-zinc-100 dark:bg-zinc-850 rounded-lg p-0.5 text-[9px] font-bold">
+                        <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 text-[9px] font-bold">
                           <button
                             type="button"
                             onClick={() => { setImageInputMode('file'); }}

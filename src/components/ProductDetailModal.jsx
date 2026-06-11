@@ -36,9 +36,20 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 dark:bg-black/80 backdrop-blur-md flex items-start justify-center p-4 pt-10 md:items-center md:pt-4"
       onClick={onClose}
     >
+      {/* Floating Close Button for Mobile viewports */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        className="fixed top-4 right-4 z-50 p-2.5 rounded-xl bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-zinc-800 shadow-lg md:hidden text-zinc-800 dark:text-zinc-200"
+        aria-label="Close details"
+      >
+        <X className="w-5 h-5" />
+      </button>
       {/* Modal Container */}
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 30 }}
@@ -48,10 +59,10 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-5xl glass-panel border border-white/20 dark:border-white/5 rounded-3xl overflow-hidden shadow-2xl relative grid grid-cols-1 md:grid-cols-2"
       >
-        {/* Close Button */}
+        {/* Close Button - Desktop Only */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2.5 rounded-xl bg-white/40 dark:bg-black/40 border border-white/20 dark:border-white/5 shadow-md hover:bg-white/60 dark:hover:bg-black/60 transition-all text-zinc-800 dark:text-zinc-200"
+          className="absolute top-4 right-4 z-10 p-2.5 rounded-xl bg-white/40 dark:bg-black/40 border border-white/20 dark:border-white/5 shadow-md hover:bg-white/60 dark:hover:bg-black/60 transition-all text-zinc-800 dark:text-zinc-200 hidden md:block"
           aria-label="Close details"
         >
           <X className="w-5 h-5" />
@@ -157,12 +168,12 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
                 Quantity
               </span>
               <div className="flex items-center space-x-4">
-                <div className="flex items-center rounded-xl bg-zinc-50 dark:bg-zinc-955/20 border border-zinc-200 dark:border-zinc-800 shadow-neo-in p-1">
+                <div className="flex items-center rounded-xl bg-zinc-50 dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800 shadow-neo-in p-1">
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
                     type="button"
-                    className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-850 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-750 transition-colors shadow-neo-out hover:shadow-neo-in flex items-center justify-center"
+                    className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-750 transition-colors shadow-neo-out hover:shadow-neo-in flex items-center justify-center"
                     aria-label="Decrease quantity"
                   >
                     <Minus className="w-3 h-3" />
@@ -176,14 +187,14 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
                     whileTap={{ scale: 0.9 }}
                     onClick={() => setQuantity(prev => prev + 1)}
                     type="button"
-                    className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-850 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-750 transition-colors shadow-neo-out hover:shadow-neo-in flex items-center justify-center"
+                    className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-750 transition-colors shadow-neo-out hover:shadow-neo-in flex items-center justify-center"
                     aria-label="Increase quantity"
                   >
                     <Plus className="w-3 h-3" />
                   </motion.button>
                 </div>
                 {quantity > 1 && (
-                  <span className="text-xs text-zinc-500 dark:text-zinc-450 font-bold font-inter">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold font-inter">
                     Total: Rs. {(currentPrice * quantity).toFixed(2)}
                   </span>
                 )}

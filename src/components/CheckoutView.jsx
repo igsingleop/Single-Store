@@ -352,7 +352,7 @@ export default function CheckoutView({
                 Shipping Address
               </h4>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
                     First Name
@@ -407,7 +407,7 @@ export default function CheckoutView({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
                     City
@@ -457,7 +457,7 @@ export default function CheckoutView({
                 </motion.button>
 
                 {!import.meta.env.VITE_RAZORPAY_KEY_ID && (
-                  <p className="text-[10px] text-zinc-455 dark:text-zinc-500 font-semibold text-center mt-2.5">
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold text-center mt-2.5">
                     {/* ℹ️ Razorpay API credentials are not set. Simulated demo checkout will be used. */}
                   </p>
                 )}
@@ -521,7 +521,7 @@ export default function CheckoutView({
             </div>
 
             {appliedCoupon ? (
-              <div className="flex justify-between items-center text-sm text-emerald-600 dark:text-emerald-450 font-semibold bg-emerald-500/10 dark:bg-emerald-950/20 px-3 py-2 rounded-xl border border-emerald-500/20">
+              <div className="flex justify-between items-center text-sm text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 dark:bg-emerald-950/20 px-3 py-2 rounded-xl border border-emerald-500/20">
                 <div className="flex items-center space-x-1.5">
                   <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
                     {appliedCoupon.code}
@@ -556,7 +556,7 @@ export default function CheckoutView({
                   <button
                     type="button"
                     onClick={handleApplyCoupon}
-                    className="px-3.5 py-2 rounded-xl bg-zinc-850 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white font-bold text-xs shadow-md transition-colors"
+                    className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white font-bold text-xs shadow-md transition-colors"
                   >
                     Apply
                   </button>

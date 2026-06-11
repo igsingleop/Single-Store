@@ -84,7 +84,7 @@ export default function WishlistView({
             <div className="w-16 h-16 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-6">
               <Heart className="w-8 h-8 fill-rose-500/20 text-rose-500 animate-pulse" />
             </div>
-            <h3 className="font-outfit text-xl font-bold text-zinc-850 dark:text-white">
+            <h3 className="font-outfit text-xl font-bold text-zinc-800 dark:text-white">
               Your wishlist is empty
             </h3>
             <p className="text-zinc-500 dark:text-zinc-400 mt-2 text-sm">

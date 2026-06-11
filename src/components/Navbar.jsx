@@ -17,7 +17,7 @@ export default function Navbar({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-40 w-full glass-panel border-b px-6 py-4 flex items-center justify-between shadow-sm">
+    <nav className="sticky top-0 z-40 w-full glass-panel border-b px-4 py-3 md:px-6 md:py-4 flex items-center justify-between shadow-sm">
       {/* Brand Logo */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
@@ -86,7 +86,7 @@ export default function Navbar({
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={toggleTheme}
-          className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all duration-300"
+          className="hidden md:flex p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all duration-300"
           aria-label="Toggle theme"
         >
           <motion.div
@@ -101,7 +101,7 @@ export default function Navbar({
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => setView('wishlist')}
-          className={`p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in relative transition-all duration-300 ${
+          className={`hidden md:flex p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in relative transition-all duration-300 ${
             currentView === 'wishlist' ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-200'
           }`}
           aria-label="Wishlist"
@@ -147,7 +147,7 @@ export default function Navbar({
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => setView(user ? 'account' : 'login')}
-          className={`p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all duration-300 ${
+          className={`hidden md:flex p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all duration-300 ${
             currentView === 'account' || currentView === 'login' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-200'
           }`}
           aria-label="Profile"
@@ -206,11 +206,30 @@ export default function Navbar({
             <button
               onClick={() => { setView(user ? 'account' : 'login'); setIsMobileMenuOpen(false); }}
               className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 ${
-                currentView === 'account' || currentView === 'login' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-750 dark:text-zinc-300'
+                currentView === 'account' || currentView === 'login' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-300'
               }`}
             >
               {user ? 'My Profile' : 'Login / Account'}
             </button>
+            <div className="flex items-center justify-between py-2.5 border-b border-zinc-100 dark:border-zinc-800">
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">Theme</span>
+              <button
+                onClick={toggleTheme}
+                className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-colors duration-300"
+              >
+                {theme === 'dark' ? (
+                  <>
+                    <Sun className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs font-semibold">Light Mode</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-4 h-4 text-indigo-600" />
+                    <span className="text-xs font-semibold">Dark Mode</span>
+                  </>
+                )}
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
