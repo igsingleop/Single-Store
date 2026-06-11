@@ -75,6 +75,7 @@ export async function initDB() {
   if (typeof window === 'undefined') return;
 
   if (isFirebaseConfigured && firestoreDb) {
+    // 1. Seed Posters
     try {
       const q = query(collection(firestoreDb, 'posters'));
       const snapshot = await getDocs(q);
@@ -85,8 +86,12 @@ export async function initDB() {
         }
         window.dispatchEvent(new Event('singlestore_db_update'));
       }
+    } catch (e) {
+      console.error("Firestore seeding posters error:", e);
+    }
 
-      // Seed default admin accounts if collection is empty
+    // 2. Seed default admin accounts if collection is empty
+    try {
       const adminsQ = query(collection(firestoreDb, 'admins'));
       const adminsSnapshot = await getDocs(adminsQ);
       if (adminsSnapshot.empty) {
@@ -95,8 +100,12 @@ export async function initDB() {
           await setDoc(doc(firestoreDb, 'admins', admin.email.toLowerCase()), admin);
         }
       }
+    } catch (e) {
+      console.error("Firestore seeding admins error:", e);
+    }
 
-      // Seed default coupons if collection is empty
+    // 3. Seed default coupons if collection is empty
+    try {
       const couponsQ = query(collection(firestoreDb, 'coupons'));
       const couponsSnapshot = await getDocs(couponsQ);
       if (couponsSnapshot.empty) {
@@ -110,7 +119,7 @@ export async function initDB() {
         }
       }
     } catch (e) {
-      console.error("Firestore DB initialization / seeding error:", e);
+      console.error("Firestore seeding coupons error:", e);
     }
   } else {
     // LocalStorage fallback

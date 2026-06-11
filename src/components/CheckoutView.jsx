@@ -90,25 +90,25 @@ export default function CheckoutView({
     e.preventDefault();
     setCouponError('');
     setCouponSuccess('');
-    
+
     if (!couponCode.trim()) {
       setCouponError('Please enter a coupon code.');
       return;
     }
-    
+
     const codeUpper = couponCode.trim().toUpperCase();
     const couponObj = coupons.find(c => c.code.toUpperCase() === codeUpper);
-    
+
     if (!couponObj) {
       setCouponError('Coupon code not found.');
       return;
     }
-    
+
     if (subtotal < couponObj.minAmount) {
       setCouponError(`Minimum order value for ${couponObj.code} is Rs. ${couponObj.minAmount.toFixed(2)}`);
       return;
     }
-    
+
     setAppliedCoupon(couponObj);
     setCouponSuccess(`Coupon ${couponObj.code} applied successfully!`);
     setCouponCodeState('');
@@ -139,7 +139,7 @@ export default function CheckoutView({
 
     try {
       const amountInPaise = Math.round(grandTotal * 100);
-      
+
       // Step 1: Create Order on backend
       const response = await fetch('/api/create-order', {
         method: 'POST',
@@ -240,6 +240,10 @@ export default function CheckoutView({
       id: paymentId,
       customerName: `${fname} ${lname}`,
       customerEmail: email,
+      customerPhone: phone,
+      shippingAddress: `${address}, ${city}, ${pinCode}, India`,
+      shippingId: "SS-SHIP-" + Math.floor(10000000 + Math.random() * 90000000),
+      trackingId: "SS-TRK-" + Math.floor(10000000 + Math.random() * 90000000),
       date: new Date().toISOString(),
       items: cart,
       total: grandTotal,
@@ -271,13 +275,13 @@ export default function CheckoutView({
     );
   }
 
-  if (subtotal < 249) {
+  if (subtotal < 99) {
     return (
       <div className="max-w-md mx-auto py-16 px-6 text-center animate-fade-in">
         <div className="text-4xl mb-4 text-rose-500">⚠️</div>
         <h2 className="font-outfit text-xl font-bold text-zinc-900 dark:text-white">Minimum Order Value Required</h2>
         <p className="text-zinc-550 dark:text-zinc-400 mt-2 text-sm leading-relaxed">
-          Your current order subtotal is {formatPrice(subtotal)}. The minimum order value required to checkout is Rs. 249.00. Please add more items to your cart.
+          Your current order subtotal is {formatPrice(subtotal)}. The minimum order value required to checkout is Rs. 99.00. Please add more items to your cart.
         </p>
         <button
           onClick={() => setView('shop')}
@@ -438,24 +442,23 @@ export default function CheckoutView({
                   <span>Payment Gateway</span>
                 </h4>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-4">
-                  Payments are secure and processed with Razorpay.
+                  Payments are secure and processed.
                 </p>
 
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
-                  disabled={loading || subtotal < 249}
-                  className={`w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/25 transition-all ${
-                    loading || subtotal < 249 ? 'opacity-85 cursor-not-allowed' : ''
-                  }`}
+                  disabled={loading || subtotal < 99}
+                  className={`w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-base flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/25 transition-all ${loading || subtotal < 99 ? 'opacity-85 cursor-not-allowed' : ''
+                    }`}
                 >
-                  {loading ? 'Processing Transaction...' : `Pay ${formatPrice(grandTotal)} with Razorpay`}
+                  {loading ? 'Processing Transaction...' : `Pay ${formatPrice(grandTotal)}`}
                 </motion.button>
 
                 {!import.meta.env.VITE_RAZORPAY_KEY_ID && (
                   <p className="text-[10px] text-zinc-455 dark:text-zinc-500 font-semibold text-center mt-2.5">
-                    ℹ️ Razorpay API credentials are not set. Simulated demo checkout will be used.
+                    {/* ℹ️ Razorpay API credentials are not set. Simulated demo checkout will be used. */}
                   </p>
                 )}
               </div>

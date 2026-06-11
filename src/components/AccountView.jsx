@@ -10,10 +10,12 @@ import {
   Phone, 
   MapPin, 
   Check, 
-  Clock 
+  Clock,
+  Download
 } from 'lucide-react';
 import { getOrders } from '../utils/db';
 import { getUserProfileDetails, updateUserProfileDetails } from '../utils/auth';
+import { downloadInvoicePDF } from '../utils/invoice';
 
 export default function AccountView({ setView, user, onLogout }) {
   const [orders, setOrders] = useState([]);
@@ -655,11 +657,23 @@ export default function AccountView({ setView, user, onLogout }) {
                             </div>
                           </div>
 
-                          <div className="text-left sm:text-right">
-                            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Grand Total</span>
-                            <span className="font-inter text-sm font-black text-zinc-900 dark:text-white">
-                              {formatPrice(order.total)}
-                            </span>
+                          <div className="flex items-center gap-4 text-left sm:text-right">
+                            <div>
+                              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Grand Total</span>
+                              <span className="font-inter text-sm font-black text-zinc-900 dark:text-white">
+                                {formatPrice(order.total)}
+                              </span>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                await downloadInvoicePDF(order, details);
+                              }}
+                              className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/20 shadow-sm flex items-center justify-center gap-1.5 transition-all text-xs font-bold shrink-0"
+                              title="Download Invoice PDF"
+                            >
+                              <Download className="w-4 h-4" />
+                              <span className="hidden sm:inline">Invoice</span>
+                            </button>
                           </div>
                         </div>
 

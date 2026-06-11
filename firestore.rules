@@ -33,7 +33,7 @@ service cloud.firestore {
     // Recommended: Use Firebase Auth for administrative users.
     match /admins/{adminEmail} {
       allow read: if true;
-      allow write: if false; // Block registration from general public in production
+      allow write: if adminEmail == 'admin@singlestore.in'; // Allow seeding/writing the default admin while blocking others
     }
 
     // 5. Coupons Collection

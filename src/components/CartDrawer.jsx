@@ -41,26 +41,26 @@ export default function CartDrawer({
     e.preventDefault();
     setCouponError('');
     setCouponSuccess('');
-    
+
     if (!couponCode.trim()) {
       setCouponError('Please enter a coupon code.');
       return;
     }
-    
+
     const codeUpper = couponCode.trim().toUpperCase();
     const couponObj = coupons.find(c => c.code.toUpperCase() === codeUpper);
-    
+
     if (!couponObj) {
       setCouponError('Coupon code not found.');
       return;
     }
-    
+
     const subtotal = getSubtotal();
     if (subtotal < couponObj.minAmount) {
       setCouponError(`Minimum order value for ${couponObj.code} is Rs. ${couponObj.minAmount.toFixed(2)}`);
       return;
     }
-    
+
     onApplyCoupon(couponObj);
     setCouponSuccess(`Coupon ${couponObj.code} applied successfully!`);
     setCouponCodeState('');
@@ -169,7 +169,7 @@ export default function CartDrawer({
                           >
                             <Minus className="w-3 h-3" />
                           </button>
-                          
+
                           <span className="w-6 text-center text-xs font-bold text-zinc-800 dark:text-zinc-200 font-inter">
                             {item.quantity || 1}
                           </span>
@@ -281,9 +281,9 @@ export default function CartDrawer({
                   </div>
                 </div>
 
-                {getFinalTotal() < 249 ? (
+                {getFinalTotal() < 99 ? (
                   <div className="text-[11px] text-rose-500 font-bold text-center mb-4 bg-rose-500/10 py-2.5 rounded-xl border border-rose-500/20">
-                    Minimum order value is Rs. 249.00
+                    Minimum order value is Rs. 99.00
                   </div>
                 ) : (
                   <p className="text-[10px] text-zinc-400 dark:text-zinc-550 text-center mb-4">
@@ -292,20 +292,19 @@ export default function CartDrawer({
                 )}
 
                 <motion.button
-                  whileHover={getFinalTotal() >= 249 ? { scale: 1.02 } : {}}
-                  whileTap={getFinalTotal() >= 249 ? { scale: 0.98 } : {}}
+                  whileHover={getFinalTotal() >= 99 ? { scale: 1.02 } : {}}
+                  whileTap={getFinalTotal() >= 99 ? { scale: 0.98 } : {}}
                   onClick={() => {
-                    if (getFinalTotal() >= 249) {
+                    if (getFinalTotal() >= 99) {
                       onCheckout();
                       onClose();
                     }
                   }}
-                  disabled={getFinalTotal() < 249}
-                  className={`w-full py-4 rounded-2xl font-bold text-sm md:text-base flex items-center justify-center space-x-2 transition-all duration-300 ${
-                    getFinalTotal() >= 249
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/25 cursor-pointer"
-                      : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed border border-zinc-300 dark:border-zinc-800"
-                  }`}
+                  disabled={getFinalTotal() < 99}
+                  className={`w-full py-4 rounded-2xl font-bold text-sm md:text-base flex items-center justify-center space-x-2 transition-all duration-300 ${getFinalTotal() >= 99
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/25 cursor-pointer"
+                    : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed border border-zinc-300 dark:border-zinc-800"
+                    }`}
                 >
                   <span>Proceed to Checkout</span>
                   <ArrowRight className="w-4.5 h-4.5" />
