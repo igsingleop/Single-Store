@@ -46,7 +46,7 @@ export default function AdminApp() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-100 to-blue-100/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-indigo-950/20 text-zinc-800 dark:text-zinc-100 flex flex-col font-sans transition-colors duration-300">
-      
+
       {/* Admin Header */}
       {session && (
         <header className="sticky top-0 z-40 w-full glass-panel border-b px-6 py-4 flex items-center justify-between shadow-sm">

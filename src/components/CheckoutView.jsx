@@ -129,7 +129,9 @@ export default function CheckoutView({
       console.log("No VITE_RAZORPAY_KEY_ID configured. Bypassing Razorpay and starting simulated checkout.");
       if (window.confirm("Razorpay API credentials are not configured. Would you like to complete this order using simulated Demo Mode?")) {
         setTimeout(() => {
-          confirmOrder("mock_pay_" + Math.floor(Math.random() * 1000000));
+          const mockPaymentId = "mock_pay_" + Math.floor(Math.random() * 1000000);
+          const mockOrderId = "mock_order_" + Math.floor(Math.random() * 1000000);
+          confirmOrder(mockPaymentId, mockOrderId);
         }, 1000);
       } else {
         setLoading(false);
@@ -185,7 +187,7 @@ export default function CheckoutView({
 
             const verifyData = await verifyRes.json();
             if (verifyRes.ok && verifyData.success) {
-              confirmOrder(paymentResponse.razorpay_payment_id);
+              confirmOrder(paymentResponse.razorpay_payment_id, paymentResponse.razorpay_order_id);
             } else {
               alert("Payment verification failed: " + (verifyData.error || "Invalid signature"));
               setLoading(false);
@@ -227,7 +229,9 @@ export default function CheckoutView({
       console.warn("Razorpay checkout failed, falling back to simulated checkout:", err);
       if (window.confirm(`Razorpay integration failed: "${err.message}". Would you like to complete this order using simulated Demo Mode?`)) {
         setTimeout(() => {
-          confirmOrder("mock_pay_" + Math.floor(Math.random() * 1000000));
+          const mockPaymentId = "mock_pay_" + Math.floor(Math.random() * 1000000);
+          const mockOrderId = "mock_order_" + Math.floor(Math.random() * 1000000);
+          confirmOrder(mockPaymentId, mockOrderId);
         }, 1000);
       } else {
         setLoading(false);
@@ -235,15 +239,18 @@ export default function CheckoutView({
     }
   };
 
-  const confirmOrder = async (paymentId) => {
+  const confirmOrder = async (paymentId, razorpayOrderId) => {
     const newOrder = {
       id: paymentId,
+      transactionId: paymentId,
+      orderId: razorpayOrderId || "mock_order_" + Math.floor(Math.random() * 1000000),
       customerName: `${fname} ${lname}`,
       customerEmail: email,
       customerPhone: phone,
       shippingAddress: `${address}, ${city}, ${pinCode}, India`,
       shippingId: "SS-SHIP-" + Math.floor(10000000 + Math.random() * 90000000),
       trackingId: "SS-TRK-" + Math.floor(10000000 + Math.random() * 90000000),
+      invoiceId: "SS-INV-" + Math.floor(10000000 + Math.random() * 90000000),
       date: new Date().toISOString(),
       items: cart,
       total: grandTotal,
