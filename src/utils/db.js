@@ -1,11 +1,11 @@
 import { firestoreDb, isFirebaseConfigured } from './firebase';
-import { 
-  collection, 
-  getDocs, 
-  setDoc, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  collection,
+  getDocs,
+  setDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
   query
 } from 'firebase/firestore';
 
@@ -54,7 +54,7 @@ const defaultAdmins = [
   {
     name: 'Super Admin',
     email: 'admin@singlestore.in',
-    password: 'admin123'
+    password: 'Amma@9344'
   }
 ];
 
