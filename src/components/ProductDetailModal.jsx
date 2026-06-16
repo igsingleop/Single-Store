@@ -3,8 +3,6 @@ import { motion } from 'framer-motion';
 import { X, ShoppingBag, ShieldCheck, Truck, RefreshCw, Minus, Plus } from 'lucide-react';
 
 export default function ProductDetailModal({ posterId, posters, onClose, onAddToCart }) {
-  const [selectedSize, setSelectedSize] = useState('18x24"');
-  const [selectedFrame, setSelectedFrame] = useState('Print Only');
   const [quantity, setQuantity] = useState(1);
 
   const poster = posters.find(p => String(p.id) === String(posterId));
@@ -13,23 +11,17 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
 
   const basePrice = poster.discountPrice ? parseFloat(poster.discountPrice) : parseFloat(poster.price);
   
-  // Calculate pricing based on options
+  // Calculate pricing based on options (size and frame options are removed)
   const getCalculatedPrice = () => {
-    let price = basePrice;
-    if (selectedSize.includes('24x36')) price += 10;
-    if (selectedFrame.includes('Frame')) price += 15;
-    return price;
+    return basePrice;
   };
 
   const currentPrice = getCalculatedPrice();
 
   const handleAddToCart = () => {
-    onAddToCart(poster.id, selectedSize, selectedFrame, quantity);
+    onAddToCart(poster.id, '18x24"', 'Print Only', quantity);
     onClose();
   };
-
-  const sizes = ['18x24"', '24x36"'];
-  const frames = ['Print Only', 'Black Frame', 'White Frame'];
 
   return (
     <motion.div
@@ -101,7 +93,7 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
               </span>
               {poster.discountPrice && (
                 <span className="font-inter text-sm text-zinc-400 dark:text-zinc-500 line-through">
-                  Rs. {((parseFloat(poster.price)) + (selectedSize.includes('24x36') ? 10 : 0) + (selectedFrame.includes('Frame') ? 15 : 0)).toFixed(2)}
+                  Rs. {parseFloat(poster.price).toFixed(2)}
                 </span>
               )}
             </div>
@@ -111,56 +103,6 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
             </p>
 
             <hr className="my-6 border-zinc-200 dark:border-zinc-800" />
-
-            {/* Size Selector */}
-            <div className="mb-5">
-              <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-2.5">
-                Select Size
-              </span>
-              <div className="flex gap-3">
-                {sizes.map((size) => {
-                  const active = selectedSize === size;
-                  return (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`flex-1 py-2.5 rounded-xl font-medium text-xs border transition-all duration-300 ${
-                        active
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                          : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 shadow-neo-out hover:shadow-neo-in'
-                      }`}
-                    >
-                      {size} {size.includes('24x36') && '(+Rs. 10.00)'}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Frame Selector */}
-            <div className="mb-5">
-              <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-2.5">
-                Framing Option
-              </span>
-              <div className="grid grid-cols-3 gap-3.5">
-                {frames.map((frame) => {
-                  const active = selectedFrame === frame;
-                  return (
-                    <button
-                      key={frame}
-                      onClick={() => setSelectedFrame(frame)}
-                      className={`py-2 px-1 rounded-xl font-medium text-[10px] sm:text-xs border transition-all duration-300 ${
-                        active
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                          : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 shadow-neo-out hover:shadow-neo-in'
-                      }`}
-                    >
-                      {frame} {frame.includes('Frame') && '(+Rs. 15.00)'}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Quantity Selector */}
             <div className="mb-6">

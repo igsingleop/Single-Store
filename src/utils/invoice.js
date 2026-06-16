@@ -84,7 +84,7 @@ export async function downloadInvoicePDF(order, userDetails = null) {
           </td>
           <td style="padding: 12px 8px; text-align: left; font-size: 12px; color: #374151; vertical-align: top;">
             <div style="font-weight: 700; color: #111827;">${item.title}</div>
-            <div style="font-size: 10px; color: #6b7280; margin-top: 2px;">Size: ${item.size} | Frame: ${item.frame}</div>
+            ${((item.size && item.size !== '18x24"') || (item.frame && item.frame !== 'Print Only')) ? `<div style="font-size: 10px; color: #6b7280; margin-top: 2px;">Size: ${item.size} | Frame: ${item.frame}</div>` : ''}
           </td>
           <td style="padding: 12px 8px; text-align: center; font-size: 12px; color: #374151; vertical-align: top;">
             ${qty}

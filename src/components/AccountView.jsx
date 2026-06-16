@@ -677,9 +677,11 @@ export default function AccountView({ setView, user, onLogout }) {
                                 <h4 className="font-outfit text-xs font-bold text-zinc-800 dark:text-white line-clamp-1">
                                   {item.title}
                                 </h4>
-                                <p className="text-[9px] text-zinc-500 dark:text-zinc-500 font-bold uppercase tracking-wider">
-                                  Size: {item.size} / Frame: {item.frame}
-                                </p>
+                                {((item.size && item.size !== '18x24"') || (item.frame && item.frame !== 'Print Only')) && (
+                                  <p className="text-[9px] text-zinc-500 dark:text-zinc-500 font-bold uppercase tracking-wider">
+                                    Size: {item.size} / Frame: {item.frame}
+                                  </p>
+                                )}
                               </div>
                               <span className="font-inter text-xs font-bold text-zinc-800 dark:text-zinc-200">
                                 {formatPrice(item.price)}

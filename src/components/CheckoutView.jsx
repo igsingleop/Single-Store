@@ -503,9 +503,11 @@ export default function CheckoutView({
                       x{item.quantity || 1}
                     </span>
                   </div>
-                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                    {item.size} / {item.frame}
-                  </p>
+                  {((item.size && item.size !== '18x24"') || (item.frame && item.frame !== 'Print Only')) && (
+                    <p className="text-[10px] text-zinc-550 dark:text-zinc-400">
+                      {item.size} / {item.frame}
+                    </p>
+                  )}
                   <div className="flex justify-between items-baseline mt-1">
                     <span className="font-inter text-xs font-extrabold text-zinc-700 dark:text-zinc-300">
                       {formatPrice(parseFloat(item.price) * (item.quantity || 1))}

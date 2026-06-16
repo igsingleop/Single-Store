@@ -155,9 +155,11 @@ export default function CartDrawer({
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold mt-0.5">
-                          Size: {item.size} / {item.frame}
-                        </p>
+                        {((item.size && item.size !== '18x24"') || (item.frame && item.frame !== 'Print Only')) && (
+                          <p className="text-[10px] text-zinc-550 dark:text-zinc-400 font-semibold mt-0.5">
+                            Size: {item.size} / {item.frame}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center justify-between mt-2.5">
                         {/* Inline Compact Quantity Controls */}

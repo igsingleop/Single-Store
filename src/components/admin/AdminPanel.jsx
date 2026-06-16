@@ -49,6 +49,11 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const [imageInputMode, setImageInputMode] = useState('file'); // 'file' or 'url'
   const [imageUploading, setImageUploading] = useState(false);
 
+  const [addMode, setAddMode] = useState('single'); // 'single' or 'multiple'
+  const [multiplePosters, setMultiplePosters] = useState([
+    { id: '1', title: '', category: '', price: '', discountPrice: '', description: '', image: '', imageInputMode: 'url', uploading: false }
+  ]);
+
   // Coupon form states
   const [couponCode, setCouponCode] = useState('');
   const [couponType, setCouponType] = useState('percentage');
@@ -247,6 +252,263 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
     setPosterDiscountPrice('');
     setPosterDesc('');
     setPosterImage('');
+  };
+
+  const handleMultipleImageUpload = (index, file) => {
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 500;
+        const MAX_HEIGHT = 500;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+        setMultiplePosters(prev => prev.map((item, idx) => 
+          idx === index ? { ...item, uploading: true } : item
+        ));
+
+        fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            image: compressedBase64,
+            filename: file.name
+          })
+        })
+        .then(async (res) => {
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Upload failed with status ${res.status}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (data.success && data.url) {
+            setMultiplePosters(prev => prev.map((item, idx) => 
+              idx === index ? { ...item, image: data.url, uploading: false } : item
+            ));
+          } else {
+            throw new Error('No public URL returned');
+          }
+        })
+        .catch((err) => {
+          console.warn("Backblaze B2 upload failed, using local Base64 fallback:", err);
+          setMultiplePosters(prev => prev.map((item, idx) => 
+            idx === index ? { ...item, image: compressedBase64, uploading: false } : item
+          ));
+        });
+      };
+      img.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleBulkImagesSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    files.forEach((file, fIdx) => {
+      const tempId = Date.now().toString() + Math.random().toString(36).substring(2, 6) + '-' + fIdx;
+      const newRow = {
+        id: tempId,
+        title: file.name.substring(0, file.name.lastIndexOf('.')) || file.name,
+        category: '',
+        price: '',
+        discountPrice: '',
+        description: '',
+        image: '',
+        imageInputMode: 'file',
+        uploading: true
+      };
+
+      setMultiplePosters(prev => {
+        if (prev.length === 1 && !prev[0].title && !prev[0].image && !prev[0].uploading) {
+          return [newRow];
+        }
+        return [...prev, newRow];
+      });
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 500;
+          const MAX_HEIGHT = 500;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+          fetch('/api/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              image: compressedBase64,
+              filename: file.name
+            })
+          })
+          .then(async (res) => {
+            if (!res.ok) {
+              const errData = await res.json().catch(() => ({}));
+              throw new Error(errData.error || `Upload failed with status ${res.status}`);
+            }
+            return res.json();
+          })
+          .then((data) => {
+            if (data.success && data.url) {
+              setMultiplePosters(prev => prev.map((item) => 
+                item.id === tempId ? { ...item, image: data.url, uploading: false } : item
+              ));
+            } else {
+              throw new Error('No public URL returned');
+            }
+          })
+          .catch((err) => {
+            console.warn("Backblaze B2 upload failed, using local Base64 fallback:", err);
+            setMultiplePosters(prev => prev.map((item) => 
+              item.id === tempId ? { ...item, image: compressedBase64, uploading: false } : item
+            ));
+          });
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const addMultipleRow = () => {
+    setMultiplePosters(prev => [
+      ...prev,
+      {
+        id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
+        title: '',
+        category: '',
+        price: '',
+        discountPrice: '',
+        description: '',
+        image: '',
+        imageInputMode: 'url',
+        uploading: false
+      }
+    ]);
+  };
+
+  const removeMultipleRow = (index) => {
+    setMultiplePosters(prev => {
+      const updated = prev.filter((_, idx) => idx !== index);
+      if (updated.length === 0) {
+        return [{
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
+          title: '',
+          category: '',
+          price: '',
+          discountPrice: '',
+          description: '',
+          image: '',
+          imageInputMode: 'url',
+          uploading: false
+        }];
+      }
+      return updated;
+    });
+  };
+
+  const updateMultipleField = (index, field, value) => {
+    setMultiplePosters(prev => prev.map((item, idx) => 
+      idx === index ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const handleMultipleSubmit = async (e) => {
+    e.preventDefault();
+
+    const invalidItem = multiplePosters.find(item => !item.title.trim() || !item.category.trim() || !item.price || isNaN(parseFloat(item.price)));
+    if (invalidItem) {
+      alert("Please fill in Poster Title, Category, and a valid Regular Price for all rows.");
+      return;
+    }
+
+    const stillUploading = multiplePosters.some(item => item.uploading);
+    if (stillUploading) {
+      alert("Some images are still uploading. Please wait for them to finish.");
+      return;
+    }
+
+    let count = 0;
+    for (const item of multiplePosters) {
+      const newPoster = {
+        id: (Date.now() + count).toString(),
+        title: item.title.trim(),
+        category: item.category.trim(),
+        price: parseFloat(item.price),
+        discountPrice: item.discountPrice ? parseFloat(item.discountPrice) : null,
+        description: item.description.trim(),
+        image: item.image || 'https://via.placeholder.com/400x600?text=No+Image'
+      };
+      await addPoster(newPoster);
+      count++;
+    }
+
+    alert(`Successfully added ${multiplePosters.length} posters to the catalog!`);
+    
+    setMultiplePosters([
+      {
+        id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
+        title: '',
+        category: '',
+        price: '',
+        discountPrice: '',
+        description: '',
+        image: '',
+        imageInputMode: 'url',
+        uploading: false
+      }
+    ]);
   };
 
   const handleEditPosterClick = (p) => {
@@ -576,203 +838,435 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
               className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start"
             >
               {/* Left Column (Create/Edit Form + Bulk Actions) */}
-              <div className="space-y-6 xl:col-span-1">
+              <div className={`space-y-6 ${addMode === 'multiple' && !editingId ? 'xl:col-span-3' : 'xl:col-span-1'}`}>
                 {/* Create/Edit Form */}
-                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md h-fit">
-                  <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
-                    {editingId ? 'Edit Product Poster' : 'Add New Poster'}
-                  </h3>
-                  <form onSubmit={handleFormSubmit} className="space-y-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                        Poster Title *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Iron Man Mark L"
-                        value={posterTitle}
-                        onChange={(e) => setPosterTitle(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                        Category *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Marvel, DC, Motivation"
-                        value={posterCategory}
-                        onChange={(e) => setPosterCategory(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                {addMode === 'multiple' && !editingId ? (
+                  <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                       <div>
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                          Regular Price (₹) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          required
-                          placeholder="25.99"
-                          value={posterPrice}
-                          onChange={(e) => setPosterPrice(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                        />
+                        <h3 className="font-outfit text-lg font-bold text-zinc-900 dark:text-white">
+                          Add Multiple Posters
+                        </h3>
+                        <p className="text-zinc-400 text-xs mt-1">
+                          Add multiple items at once by filling out the table or uploading images in bulk.
+                        </p>
                       </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                          Discount Price (₹)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="19.99"
-                          value={posterDiscountPrice}
-                          onChange={(e) => setPosterDiscountPrice(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                        />
+                      <div className="flex bg-zinc-150 dark:bg-zinc-800/80 rounded-xl p-1 text-xs font-bold gap-1 self-stretch sm:self-auto border border-zinc-200/50 dark:border-zinc-800 shadow-neo-in">
+                        <button
+                          type="button"
+                          onClick={() => setAddMode('single')}
+                          className="px-4 py-2 rounded-lg text-zinc-550 hover:text-zinc-800 dark:hover:text-zinc-200 transition-all font-semibold"
+                        >
+                          Single Poster
+                        </button>
+                        <button
+                          type="button"
+                          className="px-4 py-2 rounded-lg bg-blue-600 text-white shadow font-semibold"
+                        >
+                          Multiple Posters
+                        </button>
                       </div>
                     </div>
 
-                    {/* Dual Image Input Mode */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
-                          Poster Image *
-                        </label>
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 text-[9px] font-bold">
+                    {/* Bulk Upload Section */}
+                    <div className="border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-blue-500 rounded-2xl p-6 text-center transition-all bg-zinc-50/30 dark:bg-zinc-900/10 mb-6 relative group cursor-pointer">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleBulkImagesSelect}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <Upload className="w-8 h-8 mx-auto mb-2 text-zinc-400 group-hover:text-blue-500 transition-colors" />
+                      <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 block mb-1">
+                        Bulk Upload Poster Images
+                      </span>
+                      <span className="text-[10px] text-zinc-450 font-medium leading-relaxed block">
+                        Drag & drop or click to select multiple files. This will automatically generate a row for each image!
+                      </span>
+                    </div>
+
+                    {/* Table Container */}
+                    <div className="overflow-x-auto border border-zinc-200/50 dark:border-zinc-800/50 rounded-2xl mb-6">
+                      <table className="w-full text-left text-xs border-collapse min-w-[800px]">
+                        <thead>
+                          <tr className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-850 text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[9px]">
+                            <th className="p-3 w-12 text-center">#</th>
+                            <th className="p-3 w-52">Image Source</th>
+                            <th className="p-3 w-64">Poster Details</th>
+                            <th className="p-3 w-44">Pricing</th>
+                            <th className="p-3">Description</th>
+                            <th className="p-3 w-12 text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-200/40 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">
+                          {multiplePosters.map((item, idx) => (
+                            <tr key={item.id} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-955/10">
+                              <td className="p-3 text-center font-bold text-zinc-400">{idx + 1}</td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-14 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white flex items-center justify-center shrink-0 overflow-hidden relative">
+                                    {item.uploading ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                                    ) : item.image ? (
+                                      <img src={item.image} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span className="text-[9px] text-zinc-400">No Image</span>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 space-y-1 min-w-[120px]">
+                                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded p-0.5 text-[8px] font-bold w-fit border border-zinc-200/50 dark:border-zinc-700">
+                                      <button
+                                        type="button"
+                                        onClick={() => updateMultipleField(idx, 'imageInputMode', 'file')}
+                                        className={`px-1.5 py-0.5 rounded transition-all ${
+                                          item.imageInputMode === 'file' ? 'bg-white dark:bg-zinc-750 text-blue-600' : 'text-zinc-500'
+                                        }`}
+                                      >
+                                        File
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => updateMultipleField(idx, 'imageInputMode', 'url')}
+                                        className={`px-1.5 py-0.5 rounded transition-all ${
+                                          item.imageInputMode === 'url' ? 'bg-white dark:bg-zinc-750 text-blue-600' : 'text-zinc-500'
+                                        }`}
+                                      >
+                                        URL
+                                      </button>
+                                    </div>
+
+                                    {item.imageInputMode === 'file' ? (
+                                      <div className="relative">
+                                        <button className="w-full py-1 px-1.5 bg-zinc-100 hover:bg-zinc-250 dark:bg-zinc-800 dark:hover:bg-zinc-750 border border-zinc-250 dark:border-zinc-700 rounded text-[9px] font-bold transition-all relative overflow-hidden text-zinc-700 dark:text-zinc-300">
+                                          {item.image ? 'Change' : 'Upload'}
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                              const file = e.target.files[0];
+                                              if (file) handleMultipleImageUpload(idx, file);
+                                            }}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                          />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        placeholder="Image URL"
+                                        value={item.image && !item.image.startsWith('data:') ? item.image : ''}
+                                        onChange={(e) => updateMultipleField(idx, 'image', e.target.value)}
+                                        className="w-full px-1.5 py-1 text-[9px] bg-zinc-50 dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="space-y-1.5">
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="Poster Title *"
+                                    value={item.title}
+                                    onChange={(e) => updateMultipleField(idx, 'title', e.target.value)}
+                                    className="w-full px-2.5 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-semibold animate-none"
+                                  />
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="Category *"
+                                    value={item.category}
+                                    onChange={(e) => updateMultipleField(idx, 'category', e.target.value)}
+                                    className="w-full px-2.5 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-semibold animate-none"
+                                  />
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[8px] font-bold text-zinc-400 w-12">Regular:</span>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      required
+                                      placeholder="₹25.99"
+                                      value={item.price}
+                                      onChange={(e) => updateMultipleField(idx, 'price', e.target.value)}
+                                      className="w-full px-1.5 py-1 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-850 dark:text-zinc-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[8px] font-bold text-zinc-400 w-12">Discount:</span>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      placeholder="₹19.99"
+                                      value={item.discountPrice}
+                                      onChange={(e) => updateMultipleField(idx, 'discountPrice', e.target.value)}
+                                      className="w-full px-1.5 py-1 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-855 dark:text-zinc-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <textarea
+                                  rows={2}
+                                  placeholder="Poster description details..."
+                                  value={item.description}
+                                  onChange={(e) => updateMultipleField(idx, 'description', e.target.value)}
+                                  className="w-full px-2 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-medium"
+                                />
+                              </td>
+                              <td className="p-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeMultipleRow(idx)}
+                                  className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white transition-colors"
+                                  aria-label="Delete row"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 justify-between">
+                      <button
+                        type="button"
+                        onClick={addMultipleRow}
+                        className="px-5 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-850 dark:hover:bg-zinc-750 text-zinc-850 dark:text-zinc-200 font-bold text-xs shadow-sm transition-colors border border-zinc-250 dark:border-zinc-700"
+                      >
+                        + Add Empty Row
+                      </button>
+                      <button
+                        onClick={handleMultipleSubmit}
+                        className="px-8 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-505 text-white font-bold text-xs shadow-md shadow-blue-500/25 transition-colors"
+                      >
+                        Save All Posters
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md h-fit">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                      <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white">
+                        {editingId ? 'Edit Product Poster' : 'Add New Poster'}
+                      </h3>
+                      {!editingId && (
+                        <div className="flex bg-zinc-150 dark:bg-zinc-800/80 rounded-xl p-1 text-xs font-bold gap-1 border border-zinc-200/50 dark:border-zinc-800 shadow-neo-in">
                           <button
                             type="button"
-                            onClick={() => { setImageInputMode('file'); }}
-                            className={`px-2.5 py-1 rounded-md transition-all ${
-                              imageInputMode === 'file'
-                                ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-650 dark:text-blue-400'
-                                : 'text-zinc-500'
-                            }`}
+                            className="px-4 py-2 rounded-lg bg-blue-600 text-white shadow font-semibold"
                           >
-                            Upload File
+                            Single Poster
                           </button>
                           <button
                             type="button"
-                            onClick={() => { setImageInputMode('url'); }}
-                            className={`px-2.5 py-1 rounded-md transition-all ${
-                              imageInputMode === 'url'
-                                ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-650 dark:text-blue-400'
-                                : 'text-zinc-500'
-                            }`}
+                            onClick={() => setAddMode('multiple')}
+                            className="px-4 py-2 rounded-lg text-zinc-550 hover:text-zinc-800 dark:hover:text-zinc-200 transition-all font-semibold"
                           >
-                            Image URL
+                            Multiple Posters
                           </button>
-                      </div>
-                    </div>
-
-                    {imageInputMode === 'file' ? (
-                      <div className="relative group border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-blue-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          disabled={imageUploading}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                        />
-                        {imageUploading ? (
-                          <div className="text-center text-blue-500">
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto mb-1" />
-                            <span className="text-[10px] font-bold block">Uploading to B2 Cloud...</span>
-                          </div>
-                        ) : posterImage ? (
-                          <div className="text-center">
-                            <img
-                              src={posterImage}
-                              alt="Preview"
-                              className="w-16 h-20 object-cover rounded-md mx-auto mb-2 border border-zinc-200 dark:border-zinc-800 bg-white"
-                              onError={(e) => { e.target.src = 'https://via.placeholder.com/400x600?text=Preview+Error'; }}
-                            />
-                            <span className="text-[9px] text-emerald-500 font-bold block">
-                              {posterImage.startsWith('data:') ? 'Image Loaded (Local Session)' : 'Image Stored in B2 Cloud'}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="text-center text-zinc-400">
-                            <Upload className="w-5 h-5 mx-auto mb-1 text-zinc-400" />
-                            <span className="text-[10px] font-semibold">Upload Poster Image</span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                        <div className="space-y-2">
-                          <input
-                            type="text"
-                            placeholder="https://images.unsplash.com/photo-..."
-                            value={posterImage && !posterImage.startsWith('data:image/') ? posterImage : ''}
-                            onChange={(e) => setPosterImage(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                          />
-                          {posterImage && !posterImage.startsWith('data:image/') && (
-                            <div className="text-center">
-                              <img
-                                src={posterImage}
-                                alt="Preview"
-                                className="w-16 h-20 object-cover rounded-md mx-auto mb-1 border border-zinc-200 dark:border-zinc-800 bg-white"
-                                onError={(e) => { e.target.src = 'https://via.placeholder.com/400x600?text=Invalid+Image+URL'; }}
-                              />
-                              <span className="text-[9px] text-zinc-400 font-semibold block">URL Preview</span>
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
+                    <form onSubmit={handleFormSubmit} className="space-y-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                          Poster Title *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Iron Man Mark L"
+                          value={posterTitle}
+                          onChange={(e) => setPosterTitle(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                        />
+                      </div>
 
-                    <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                        Description
-                      </label>
-                      <textarea
-                        rows={3}
-                        placeholder="Enter premium description details..."
-                        value={posterDesc}
-                        onChange={(e) => setPosterDesc(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                      />
-                    </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                          Category *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Marvel, DC, Motivation"
+                          value={posterCategory}
+                          onChange={(e) => setPosterCategory(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                        />
+                      </div>
 
-                    <div className="flex gap-3 pt-2">
-                      <button
-                        type="submit"
-                        disabled={imageUploading}
-                        className={`flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-colors ${
-                          imageUploading ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        {imageUploading ? 'Uploading Image...' : editingId ? 'Update Product' : 'Add Poster to Store'}
-                      </button>
-                      {editingId && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                            Regular Price (₹) *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            placeholder="25.99"
+                            value={posterPrice}
+                            onChange={(e) => setPosterPrice(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                            Discount Price (₹)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="19.99"
+                            value={posterDiscountPrice}
+                            onChange={(e) => setPosterDiscountPrice(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Dual Image Input Mode */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                            Poster Image *
+                          </label>
+                          <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 text-[9px] font-bold">
+                            <button
+                              type="button"
+                              onClick={() => { setImageInputMode('file'); }}
+                              className={`px-2.5 py-1 rounded-md transition-all ${
+                                imageInputMode === 'file'
+                                  ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-650 dark:text-blue-400'
+                                  : 'text-zinc-500'
+                              }`}
+                            >
+                              Upload File
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setImageInputMode('url'); }}
+                              className={`px-2.5 py-1 rounded-md transition-all ${
+                                imageInputMode === 'url'
+                                  ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-650 dark:text-blue-400'
+                                  : 'text-zinc-500'
+                              }`}
+                            >
+                              Image URL
+                            </button>
+                          </div>
+                        </div>
+
+                        {imageInputMode === 'file' ? (
+                          <div className="relative group border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-blue-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              disabled={imageUploading}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                            {imageUploading ? (
+                              <div className="text-center text-blue-500">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto mb-1" />
+                                <span className="text-[10px] font-bold block">Uploading to B2 Cloud...</span>
+                              </div>
+                            ) : posterImage ? (
+                              <div className="text-center">
+                                <img
+                                  src={posterImage}
+                                  alt="Preview"
+                                  className="w-16 h-20 object-cover rounded-md mx-auto mb-2 border border-zinc-200 dark:border-zinc-800 bg-white"
+                                  onError={(e) => { e.target.src = 'https://via.placeholder.com/400x600?text=Preview+Error'; }}
+                                />
+                                <span className="text-[9px] text-emerald-500 font-bold block">
+                                  {posterImage.startsWith('data:') ? 'Image Loaded (Local Session)' : 'Image Stored in B2 Cloud'}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="text-center text-zinc-400">
+                                <Upload className="w-5 h-5 mx-auto mb-1 text-zinc-400" />
+                                <span className="text-[10px] font-semibold">Upload Poster Image</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              placeholder="https://images.unsplash.com/photo-..."
+                              value={posterImage && !posterImage.startsWith('data:image/') ? posterImage : ''}
+                              onChange={(e) => setPosterImage(e.target.value)}
+                              className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                            />
+                            {posterImage && !posterImage.startsWith('data:image/') && (
+                              <div className="text-center">
+                                <img
+                                  src={posterImage}
+                                  alt="Preview"
+                                  className="w-16 h-20 object-cover rounded-md mx-auto mb-1 border border-zinc-200 dark:border-zinc-800 bg-white"
+                                  onError={(e) => { e.target.src = 'https://via.placeholder.com/400x600?text=Invalid+Image+URL'; }}
+                                />
+                                <span className="text-[9px] text-zinc-400 font-semibold block">URL Preview</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                          Description
+                        </label>
+                        <textarea
+                          rows={3}
+                          placeholder="Enter premium description details..."
+                          value={posterDesc}
+                          onChange={(e) => setPosterDesc(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <div className="flex gap-3 pt-2">
                         <button
-                          type="button"
-                          onClick={() => {
-                            setEditingId(null);
-                            setPosterTitle('');
-                            setPosterCategory('');
-                            setPosterPrice('');
-                            setPosterDiscountPrice('');
-                            setPosterDesc('');
-                            setPosterImage('');
-                          }}
-                          className="px-4 py-3 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs hover:bg-zinc-300 transition-colors"
+                          type="submit"
+                          disabled={imageUploading}
+                          className={`flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-colors ${
+                            imageUploading ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
-                          Cancel
+                          {imageUploading ? 'Uploading Image...' : editingId ? 'Update Product' : 'Add Poster to Store'}
                         </button>
-                      )}
-                    </div>
-                  </form>
-                </div>
+                        {editingId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingId(null);
+                              setPosterTitle('');
+                              setPosterCategory('');
+                              setPosterPrice('');
+                              setPosterDiscountPrice('');
+                              setPosterDesc('');
+                              setPosterImage('');
+                            }}
+                            className="px-4 py-3 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs hover:bg-zinc-300 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+                )}
 
                 {/* Bulk Operations Tools */}
                 <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md h-fit">
