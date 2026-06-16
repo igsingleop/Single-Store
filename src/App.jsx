@@ -8,7 +8,6 @@ import {
   getCoupons
 } from './utils/db';
 import { subscribeAuth, logout } from './utils/auth';
-import { downloadInvoicePDF } from './utils/invoice';
 
 
 
@@ -28,13 +27,27 @@ const AdminPanel = lazy(() => import('./components/admin/AdminPanel'));
 const AccountView = lazy(() => import('./components/AccountView'));
 
 export default function App() {
-  const [currentView, setView] = useState('home');
+  const [currentView, setView] = useState(() => {
+    try {
+      const saved = localStorage.getItem('SINGLESTORE_CURRENT_VIEW');
+      return saved || 'home';
+    } catch {
+      return 'home';
+    }
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPosterId, setSelectedPosterId] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Auth User State
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('SINGLESTORE_CUSTOMER_SESSION');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Admin session state
   const [adminSession, setAdminSession] = useState(() => {
@@ -162,6 +175,24 @@ export default function App() {
     }
     localStorage.setItem('singlestore_theme', theme);
   }, [theme]);
+
+  // View synchronization effect
+  useEffect(() => {
+    localStorage.setItem('SINGLESTORE_CURRENT_VIEW', currentView);
+  }, [currentView]);
+
+  // Auth routing redirect guards
+  useEffect(() => {
+    if (currentView === 'account' && !user) {
+      setView('login');
+    }
+    if (currentView === 'admin' && !adminSession) {
+      setView('login');
+    }
+    if (currentView === 'login' && user) {
+      setView('account');
+    }
+  }, [currentView, user, adminSession]);
 
   // Wishlist synchronization effect
   useEffect(() => {
@@ -532,16 +563,6 @@ export default function App() {
               </div>
 
               <div className="flex flex-col gap-3">
-                <button
-                  onClick={async () => {
-                    await downloadInvoicePDF(completedOrder, user);
-                  }}
-                  className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                  <span>Download Invoice PDF</span>
-                </button>
-
                 <button
                   onClick={() => {
                     setCompletedOrder(null);

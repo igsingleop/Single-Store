@@ -899,7 +899,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                     <th className="pb-3">Timestamp</th>
                     <th className="pb-3">Total Amount</th>
                     <th className="pb-3">Modify Status</th>
-                    <th className="pb-3 text-right">Invoice</th>
+                    <th className="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200/40 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">

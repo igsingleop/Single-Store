@@ -54,7 +54,7 @@ const loadHtml2Pdf = () => {
 export async function downloadInvoicePDF(order, userDetails = null) {
   try {
     const html2pdf = await loadHtml2Pdf();
-    
+
     // Create element for PDF generation
     const element = document.createElement('div');
     element.style.padding = '40px';
@@ -64,14 +64,14 @@ export async function downloadInvoicePDF(order, userDetails = null) {
     element.style.width = '720px';
     element.style.margin = '0 auto';
     element.style.boxSizing = 'border-box';
-    
+
     const invoiceId = getOrderInvoiceId(order);
     const address = getOrderAddress(order);
     const phone = getOrderPhone(order, userDetails);
-    
+
     const transactionId = order.transactionId || order.id || 'N/A';
     const orderId = order.orderId || order.razorpayOrderId || `SS-ORD-${Math.abs(hashCode(order.id || '')).toString().padStart(8, '0')}`;
-    
+
     const itemsRows = order.items.map((item, idx) => {
       const qty = item.quantity || 1;
       const rate = parseFloat(item.price);
@@ -252,8 +252,8 @@ export async function downloadInvoicePDF(order, userDetails = null) {
       margin: [10, 10, 10, 10],
       filename: `Invoice_${invoiceId}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2.5, 
+      html2canvas: {
+        scale: 2.5,
         useCORS: true,
         logging: true,
         letterRendering: true,
@@ -264,7 +264,7 @@ export async function downloadInvoicePDF(order, userDetails = null) {
     };
 
     await html2pdf().from(element).set(opt).save();
-    
+
     // Clean up DOM
     document.body.removeChild(element);
   } catch (error) {

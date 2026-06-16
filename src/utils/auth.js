@@ -53,17 +53,27 @@ export function subscribeAuth(callback) {
       if (user) {
         try {
           const profile = await getUserProfileDetails(user.uid, user.email);
-          callback({
+          const sessionUser = {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
             photoURL: (profile && profile.photoURL) || user.photoURL
-          });
+          };
+          localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(sessionUser));
+          callback(sessionUser);
         } catch (e) {
           console.warn("Error merging profile image on subscribe:", e);
-          callback(user);
+          const sessionUser = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL
+          };
+          localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(sessionUser));
+          callback(sessionUser);
         }
       } else {
+        localStorage.removeItem(CUSTOMER_SESSION_KEY);
         callback(null);
       }
     });
@@ -175,11 +185,11 @@ export async function loginWithGoogle() {
 }
 
 export async function logout() {
+  localStorage.removeItem(CUSTOMER_SESSION_KEY);
   if (isFirebaseConfigured && auth) {
     await signOut(auth);
   } else {
     mockUser = null;
-    localStorage.removeItem(CUSTOMER_SESSION_KEY);
     notifyListeners(null);
   }
 }
@@ -267,9 +277,10 @@ export async function updateUserProfileDetails(uid, profileData) {
     const updated = {
       uid: auth.currentUser.uid,
       email: auth.currentUser.email,
-      displayName: auth.currentUser.displayName,
+      displayName: profileData.displayName || auth.currentUser.displayName,
       photoURL: finalPhotoURL || auth.currentUser.photoURL
     };
+    localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(updated));
     notifyListeners(updated);
     return { user: updated, details: extendedData };
   } else if (mockUser) {
