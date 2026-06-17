@@ -13,7 +13,13 @@ import {
   Database,
   LogOut,
   ArrowLeft,
-  Ticket
+  Ticket,
+  Users,
+  Search,
+  FileSpreadsheet,
+  Eye,
+  X,
+  ChevronRight
 } from 'lucide-react';
 import {
   getPosters,
@@ -26,7 +32,9 @@ import {
   deleteOrder,
   getCoupons,
   addCoupon,
-  deleteCoupon
+  deleteCoupon,
+  getCustomers,
+  syncCustomersFromOrders
 } from '../../utils/db';
 
 export default function AdminPanel({ session, onLogout, onBackToStore = () => window.location.href = '/' }) {
@@ -35,6 +43,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const [posters, setPosters] = useState([]);
   const [orders, setOrders] = useState([]);
   const [coupons, setCoupons] = useState([]);
+  const [customers, setCustomers] = useState([]);
 
   // Form states for creating/editing poster
   const [editingId, setEditingId] = useState(null);
@@ -60,15 +69,37 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const [couponValue, setCouponValue] = useState('');
   const [couponMinAmount, setCouponMinAmount] = useState('');
 
+  // Customer search, sort, and detail states
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customerSortBy, setCustomerSortBy] = useState('spent'); // 'spent', 'orders', 'name', 'recent'
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+  const [syncingCustomers, setSyncingCustomers] = useState(false);
+
   useEffect(() => {
     // Initial fetch
     const fetchAllData = async () => {
       const dbPosters = await getPosters();
       const dbOrders = await getOrders();
       const dbCoupons = await getCoupons();
+      let dbCustomers = await getCustomers();
+
+      // Automatically sync customer profiles if none exist but orders do
+      if (dbCustomers.length === 0 && dbOrders.length > 0) {
+        setSyncingCustomers(true);
+        try {
+          await syncCustomersFromOrders(dbOrders);
+          dbCustomers = await getCustomers();
+        } catch (e) {
+          console.error("Auto-sync customers error:", e);
+        } finally {
+          setSyncingCustomers(false);
+        }
+      }
+
       setPosters(dbPosters);
       setOrders(dbOrders);
       setCoupons(dbCoupons);
+      setCustomers(dbCustomers);
     };
     fetchAllData();
 
@@ -621,13 +652,69 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
     e.target.value = ''; // Reset file input
   };
 
+  const handleExportCustomersCSV = () => {
+    if (customers.length === 0) {
+      alert("No customer profiles to export.");
+      return;
+    }
+
+    const headers = ["Customer Name", "Email", "Phone", "Total Orders", "Total Spent (Rs.)", "Shipping Address", "Last Order Date"];
+
+    const rows = customers.map(c => [
+      c.name || "Anonymous Customer",
+      c.email || "",
+      c.phone || "",
+      c.orderCount || 0,
+      (c.totalSpent || 0).toFixed(2),
+      c.address || "",
+      c.lastOrderDate ? new Date(c.lastOrderDate).toLocaleString() : "N/A"
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `singlestore_customers_export_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const filteredCustomers = customers.filter(c => {
+    const query = customerSearchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      (c.name && c.name.toLowerCase().includes(query)) ||
+      (c.email && c.email.toLowerCase().includes(query)) ||
+      (c.phone && c.phone.includes(query)) ||
+      (c.address && c.address.toLowerCase().includes(query))
+    );
+  }).sort((a, b) => {
+    if (customerSortBy === 'spent') {
+      return (b.totalSpent || 0) - (a.totalSpent || 0);
+    } else if (customerSortBy === 'orders') {
+      return (b.orderCount || 0) - (a.orderCount || 0);
+    } else if (customerSortBy === 'name') {
+      return (a.name || '').localeCompare(b.name || '');
+    } else if (customerSortBy === 'recent') {
+      return new Date(b.lastOrderDate || 0) - new Date(a.lastOrderDate || 0);
+    }
+    return 0;
+  });
+
   return (
-    <div className="w-full max-w-7xl mx-auto px-6 py-12 flex flex-col lg:flex-row gap-8">
+    <div className="w-full max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-12 flex flex-col lg:flex-row gap-6 md:gap-8">
       {/* Sidebar Navigation */}
-      <div className="w-full lg:w-64 shrink-0 flex flex-row lg:flex-col gap-2 p-3 glass-panel border border-zinc-200/50 dark:border-zinc-800 rounded-3xl h-fit lg:min-h-[500px]">
+      <div className="w-full lg:w-64 shrink-0 flex flex-row lg:flex-col gap-2 p-2 sm:p-3 glass-panel border border-zinc-200/50 dark:border-zinc-800 rounded-2xl lg:rounded-3xl h-fit lg:min-h-[500px] overflow-x-auto scrollbar-none flex-nowrap lg:flex-wrap lg:overflow-visible">
         
         {/* Profile overview */}
-        <div className="hidden lg:block pb-4 mb-4 border-b border-zinc-200 dark:border-zinc-800 text-center">
+        <div className="hidden lg:block pb-4 mb-4 border-b border-zinc-200 dark:border-zinc-800 text-center w-full animate-none">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-650 flex items-center justify-center text-white font-extrabold text-lg mx-auto mb-2 shadow-md">
             {session.name ? session.name.substring(0, 2).toUpperCase() : 'AD'}
           </div>
@@ -637,67 +724,79 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
 
         <button
           onClick={() => setActiveTab('inventory')}
-          className={`flex-1 lg:flex-none px-4 py-3 rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2.5 transition-all duration-300 ${
+          className={`shrink-0 lg:shrink flex-1 lg:flex-none px-4 py-3 rounded-xl sm:rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2 transition-all duration-300 ${
             activeTab === 'inventory'
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55'
           }`}
         >
-          <Package className="w-4 h-4" />
-          <span>Inventory Manager</span>
+          <Package className="w-4 h-4 animate-none" />
+          <span>Inventory</span>
         </button>
 
         <button
           onClick={() => setActiveTab('orders')}
-          className={`flex-1 lg:flex-none px-4 py-3 rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2.5 transition-all duration-300 ${
+          className={`shrink-0 lg:shrink flex-1 lg:flex-none px-4 py-3 rounded-xl sm:rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2 transition-all duration-300 ${
             activeTab === 'orders'
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55'
           }`}
         >
-          <ShoppingBag className="w-4 h-4" />
-          <span>Orders Manager</span>
+          <ShoppingBag className="w-4 h-4 animate-none" />
+          <span>Orders</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('customers')}
+          className={`shrink-0 lg:shrink flex-1 lg:flex-none px-4 py-3 rounded-xl sm:rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2 transition-all duration-300 ${
+            activeTab === 'customers'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55'
+          }`}
+        >
+          <Users className="w-4 h-4 animate-none" />
+          <span>Customers</span>
         </button>
 
         <button
           onClick={() => setActiveTab('coupons')}
-          className={`flex-1 lg:flex-none px-4 py-3 rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2.5 transition-all duration-300 ${
+          className={`shrink-0 lg:shrink flex-1 lg:flex-none px-4 py-3 rounded-xl sm:rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2 transition-all duration-300 ${
             activeTab === 'coupons'
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55'
           }`}
         >
-          <Ticket className="w-4 h-4" />
-          <span>Coupons Manager</span>
+          <Ticket className="w-4 h-4 animate-none" />
+          <span>Coupons</span>
         </button>
 
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`flex-1 lg:flex-none px-4 py-3 rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2.5 transition-all duration-300 ${
+          className={`shrink-0 lg:shrink flex-1 lg:flex-none px-4 py-3 rounded-xl sm:rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2 transition-all duration-300 ${
             activeTab === 'dashboard'
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55'
           }`}
         >
-          <TrendingUp className="w-4 h-4" />
+          <TrendingUp className="w-4 h-4 animate-none" />
           <span>Dashboard</span>
         </button>
 
         {/* Return to shop */}
         <button
           onClick={onBackToStore}
-          className="hidden lg:flex px-4 py-3 rounded-2xl font-bold text-xs md:text-sm items-center space-x-2.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55 mt-auto text-left"
+          className="hidden lg:flex px-4 py-3 rounded-2xl font-bold text-xs md:text-sm items-center space-x-2 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55 mt-auto text-left w-full transition-all"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 animate-none" />
           <span>Return to Shop</span>
         </button>
 
         {/* Logout Button */}
         <button
           onClick={onLogout}
-          className="px-4 py-3 rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2.5 text-red-500 hover:bg-red-500/10 transition-all mt-2"
+          className="shrink-0 lg:shrink px-4 py-3 rounded-xl sm:rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2 text-red-500 hover:bg-red-500/10 transition-all lg:mt-2"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut className="w-4 h-4 animate-none" />
           <span>Logout</span>
         </button>
       </div>
@@ -1427,7 +1526,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                       <td className="py-3 text-right">
                         <div className="inline-flex gap-2">
                           <button
-                            onClick={() => alert(`Order details:\nItems:\n${o.items.map(i => `- ${i.title} (${i.size}, ${i.frame}) x${i.quantity || 1}`).join('\n')}`)}
+                            onClick={() => setSelectedOrderDetails(o)}
                             className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-semibold transition-colors"
                           >
                             Details
@@ -1438,7 +1537,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                             title="Delete Order"
                             aria-label="Delete order"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3.5 h-3.5 animate-none" />
                           </button>
                         </div>
                       </td>
@@ -1453,6 +1552,159 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                   )}
                 </tbody>
               </table>
+            </motion.div>
+          )}
+
+          {activeTab === 'customers' && (
+            <motion.div
+              key="customers"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-6 font-sans"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md">
+                <div>
+                  <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white">
+                    Customer Profiles Directory
+                  </h3>
+                  <p className="text-zinc-400 text-xs mt-1 animate-none">
+                    Manage customer database, purchase history, and export records for Excel.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={handleExportCustomersCSV}
+                    className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-505 text-white font-bold text-xs shadow-md shadow-blue-500/25 transition-all flex items-center gap-2"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 animate-none" />
+                    <span>Download Excel (.csv)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters & Search Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                <div className="relative sm:col-span-2">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <input
+                     type="text"
+                     placeholder="Search by customer name, email, phone or address..."
+                     value={customerSearchQuery}
+                     onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                     className="w-full pl-10 pr-4 py-3 rounded-2xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-850 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-medium animate-none"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest whitespace-nowrap">Sort By:</span>
+                  <select
+                    value={customerSortBy}
+                    onChange={(e) => setCustomerSortBy(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-2xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-850 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer font-bold transition-all"
+                  >
+                    <option value="spent">Total Spent</option>
+                    <option value="orders">Total Orders</option>
+                    <option value="name">Name A-Z</option>
+                    <option value="recent">Last Active</option>
+                  </select>
+                </div>
+              </div>
+
+              {syncingCustomers && (
+                <div className="text-center py-8 text-xs font-bold text-blue-500 animate-pulse">
+                  Syncing and compiling historic customer details from orders...
+                </div>
+              )}
+
+              {/* Desktop and Tablet Table view */}
+              <div className="hidden md:block glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold">
+                      <th className="pb-3">Customer Info</th>
+                      <th className="pb-3">Contact</th>
+                      <th className="pb-3">Default Location</th>
+                      <th className="pb-3 text-center">Orders</th>
+                      <th className="pb-3 text-right">Spent</th>
+                      <th className="pb-3 text-right">Last Active</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200/40 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">
+                    {filteredCustomers.map((c) => (
+                      <tr key={c.email} className="hover:bg-zinc-50/20 dark:hover:bg-zinc-850/10 transition-colors">
+                        <td className="py-4 font-semibold">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-extrabold text-[11px] shadow-sm">
+                              {(c.name || 'C').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-bold text-zinc-900 dark:text-white">{c.name || 'Anonymous Customer'}</div>
+                              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium">{c.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 font-medium text-zinc-650 dark:text-zinc-350">{c.phone || 'N/A'}</td>
+                        <td className="py-4 max-w-[200px] truncate font-medium text-zinc-600 dark:text-zinc-400" title={c.address}>
+                          {c.address || 'No address logged'}
+                        </td>
+                        <td className="py-4 text-center font-bold text-blue-600 dark:text-blue-400">{c.orderCount || 0}</td>
+                        <td className="py-4 text-right font-extrabold text-emerald-600 dark:text-emerald-400">{formatPrice(c.totalSpent || 0)}</td>
+                        <td className="py-4 text-right font-medium text-zinc-500 dark:text-zinc-500">
+                          {c.lastOrderDate ? new Date(c.lastOrderDate).toLocaleDateString() : 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredCustomers.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-zinc-500 dark:text-zinc-500">
+                          No customer profiles found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards view */}
+              <div className="block md:hidden space-y-4">
+                {filteredCustomers.map((c) => (
+                  <div key={c.email} className="glass-panel p-5 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-extrabold text-xs shadow-sm">
+                        {(c.name || 'C').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-extrabold text-sm text-zinc-900 dark:text-white truncate">
+                          {c.name || 'Anonymous Customer'}
+                        </div>
+                        <div className="text-[10px] text-zinc-450 truncate">{c.email}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-center bg-zinc-50/50 dark:bg-zinc-900/50 p-2.5 rounded-2xl border border-zinc-150 dark:border-zinc-850">
+                      <div>
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase block">Total Orders</span>
+                        <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">{c.orderCount || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase block">Total Spent</span>
+                        <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">{formatPrice(c.totalSpent || 0)}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-xs space-y-1.5 text-zinc-650 dark:text-zinc-350 font-medium">
+                      <p><strong className="text-zinc-800 dark:text-zinc-200 font-bold">Phone:</strong> {c.phone || 'N/A'}</p>
+                      <p className="line-clamp-2"><strong className="text-zinc-800 dark:text-zinc-200 font-bold">Address:</strong> {c.address || 'No address logged'}</p>
+                      <p><strong className="text-zinc-800 dark:text-zinc-200 font-bold">Last Active:</strong> {c.lastOrderDate ? new Date(c.lastOrderDate).toLocaleDateString() : 'N/A'}</p>
+                    </div>
+                  </div>
+                ))}
+                {filteredCustomers.length === 0 && (
+                  <div className="glass-panel p-8 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 text-center text-zinc-500 dark:text-zinc-500">
+                    No customer profiles found.
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
 
@@ -1590,6 +1842,141 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
           )}
         </AnimatePresence>
       </div>
+
+      {/* Order Details Modal Overlay */}
+      <AnimatePresence>
+        {selectedOrderDetails && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedOrderDetails(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 relative font-sans text-zinc-850 dark:text-zinc-100"
+            >
+              <button
+                onClick={() => setSelectedOrderDetails(null)}
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5 animate-none" />
+              </button>
+
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500">
+                  <ShoppingBag className="w-6 h-6 animate-none" />
+                </div>
+                <div>
+                  <h3 className="font-outfit text-lg font-bold text-zinc-900 dark:text-white">
+                    Order Details
+                  </h3>
+                  <p className="text-[11px] font-mono font-bold text-blue-600 dark:text-blue-400 mt-0.5 animate-none">
+                    #{selectedOrderDetails.id}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-zinc-150 dark:border-zinc-800/80">
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-bold text-zinc-450 dark:text-zinc-400 uppercase tracking-widest block">
+                    Customer Information
+                  </h4>
+                  <div className="text-xs space-y-1.5 text-zinc-700 dark:text-zinc-300 font-medium">
+                    <p><strong className="text-zinc-950 dark:text-white font-bold">Name:</strong> {selectedOrderDetails.customerName}</p>
+                    <p><strong className="text-zinc-950 dark:text-white font-bold">Email:</strong> {selectedOrderDetails.customerEmail}</p>
+                    <p><strong className="text-zinc-950 dark:text-white font-bold">Phone:</strong> {selectedOrderDetails.customerPhone || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-bold text-zinc-450 dark:text-zinc-400 uppercase tracking-widest block">
+                    Shipping Details
+                  </h4>
+                  <div className="text-xs space-y-1.5 text-zinc-700 dark:text-zinc-300 font-medium">
+                    <p className="leading-relaxed"><strong className="text-zinc-950 dark:text-white font-bold">Address:</strong> {selectedOrderDetails.shippingAddress}</p>
+                    <p><strong className="text-zinc-950 dark:text-white font-bold">Date:</strong> {new Date(selectedOrderDetails.date).toLocaleString()}</p>
+                    <p className="flex items-center gap-1.5">
+                      <strong className="text-zinc-950 dark:text-white font-bold">Status:</strong>{' '}
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getStatusBadgeClass(selectedOrderDetails.status)}`}>
+                        {selectedOrderDetails.status}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Metadata */}
+              <div className="grid grid-cols-3 gap-2 py-4 border-b border-zinc-150 dark:border-zinc-800/80 text-[10px] font-mono text-zinc-400">
+                <div>
+                  <span className="block font-bold">Tracking ID:</span>
+                  <span className="text-zinc-700 dark:text-zinc-300 font-semibold">{selectedOrderDetails.trackingId || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="block font-bold">Shipping ID:</span>
+                  <span className="text-zinc-700 dark:text-zinc-300 font-semibold">{selectedOrderDetails.shippingId || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="block font-bold">Invoice ID:</span>
+                  <span className="text-zinc-700 dark:text-zinc-300 font-semibold">{selectedOrderDetails.invoiceId || 'N/A'}</span>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="py-6 space-y-4 max-h-[30vh] overflow-y-auto">
+                <h4 className="text-[10px] font-bold text-zinc-450 dark:text-zinc-400 uppercase tracking-widest mb-2 block">
+                  Order Items
+                </h4>
+                {selectedOrderDetails.items.map((item, index) => (
+                  <div key={index} className="flex items-center gap-4 py-2 border-b border-zinc-100 dark:border-zinc-850/50 last:border-b-0">
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-10 h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-850 bg-white"
+                      onError={(e) => { e.target.src = 'https://via.placeholder.com/400x600?text=No+Image'; }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h5 className="font-outfit text-xs font-bold text-zinc-900 dark:text-white truncate">
+                        {item.title}
+                      </h5>
+                      <p className="text-[10px] text-zinc-450 mt-0.5">
+                        {item.size || '18x24"'} / {item.frame || 'Print Only'}
+                      </p>
+                      <div className="flex justify-between items-baseline mt-1">
+                        <span className="text-[11px] font-bold font-inter text-zinc-800 dark:text-zinc-300">
+                          {formatPrice(item.price)} x {item.quantity || 1}
+                        </span>
+                        <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 font-mono">
+                          {formatPrice(parseFloat(item.price) * (item.quantity || 1))}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Order Totals */}
+              <div className="pt-4 border-t border-zinc-150 dark:border-zinc-800/80 flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] text-zinc-400 font-bold uppercase block">Payment Method</span>
+                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 font-sans">Razorpay Secure Online</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-zinc-400 font-bold uppercase block">Grand Total</span>
+                  <span className="font-inter text-xl font-extrabold text-zinc-900 dark:text-white">
+                    {formatPrice(selectedOrderDetails.total)}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { firestoreDb, isFirebaseConfigured } from './firebase';
 import {
   collection,
   getDocs,
+  getDoc,
   setDoc,
   doc,
   updateDoc,
@@ -283,7 +284,10 @@ export async function addOrder(order) {
   if (isFirebaseConfigured && firestoreDb) {
     try {
       const orderId = order.id || doc(collection(firestoreDb, 'orders')).id;
-      await setDoc(doc(firestoreDb, 'orders', String(orderId)), { ...order, id: orderId });
+      const orderWithId = { ...order, id: orderId };
+      await setDoc(doc(firestoreDb, 'orders', String(orderId)), orderWithId);
+      // Automatically register or update customer details
+      await updateCustomerFromOrder(orderWithId);
       window.dispatchEvent(new Event('singlestore_db_update'));
     } catch (e) {
       console.error("Firestore addOrder error:", e);
@@ -292,6 +296,8 @@ export async function addOrder(order) {
     const orders = safeParse(DB_ORDERS_KEY, []);
     orders.push(order);
     localStorage.setItem(DB_ORDERS_KEY, JSON.stringify(orders));
+    // Automatically register or update customer details
+    await updateCustomerFromOrder(order);
     window.dispatchEvent(new Event('singlestore_db_update'));
   }
 }
@@ -458,5 +464,148 @@ export async function deleteCoupon(code) {
     const filtered = coupons.filter(c => c.code !== codeUpper);
     localStorage.setItem(DB_COUPONS_KEY, JSON.stringify(filtered));
     window.dispatchEvent(new Event('singlestore_db_update'));
+  }
+}
+
+// --- Customer Operations ---
+export async function getCustomers() {
+  let list = [];
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      const snapshot = await getDocs(collection(firestoreDb, 'customers'));
+      snapshot.forEach(doc => {
+        list.push({ ...doc.data(), email: doc.id });
+      });
+    } catch (e) {
+      console.error("Firestore getCustomers error:", e);
+      list = safeParse('SINGLESTORE_CUSTOMERS', []);
+    }
+  } else {
+    list = safeParse('SINGLESTORE_CUSTOMERS', []);
+  }
+  return list;
+}
+
+export async function updateCustomerFromOrder(order) {
+  if (!order.customerEmail) return;
+  const email = order.customerEmail.toLowerCase().trim();
+  const name = order.customerName || 'Anonymous Customer';
+  const phone = order.customerPhone || '';
+  const address = order.shippingAddress || '';
+  const date = order.date || new Date().toISOString();
+  const total = parseFloat(order.total) || 0;
+
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      const docRef = doc(firestoreDb, 'customers', email);
+      const docSnap = await getDoc(docRef);
+      let customerData = {
+        name,
+        email,
+        phone,
+        address,
+        lastOrderDate: date,
+        totalSpent: total,
+        orderCount: 1,
+        orderIds: [order.id]
+      };
+      if (docSnap.exists()) {
+        const existing = docSnap.data();
+        const orderIds = existing.orderIds || [];
+        if (!orderIds.includes(order.id)) {
+          orderIds.push(order.id);
+          customerData = {
+            ...existing,
+            name: name !== 'Anonymous Customer' ? name : existing.name,
+            phone: phone || existing.phone,
+            address: address || existing.address,
+            lastOrderDate: date,
+            totalSpent: (existing.totalSpent || 0) + total,
+            orderCount: (existing.orderCount || 0) + 1,
+            orderIds
+          };
+        }
+      }
+      await setDoc(docRef, customerData);
+    } catch (e) {
+      console.error("Firestore updateCustomerFromOrder error:", e);
+    }
+  } else {
+    const customers = safeParse('SINGLESTORE_CUSTOMERS', []);
+    const idx = customers.findIndex(c => c.email.toLowerCase() === email);
+    if (idx > -1) {
+      const existing = customers[idx];
+      const orderIds = existing.orderIds || [];
+      if (!orderIds.includes(order.id)) {
+        orderIds.push(order.id);
+        customers[idx] = {
+          ...existing,
+          name: name !== 'Anonymous Customer' ? name : existing.name,
+          phone: phone || existing.phone,
+          address: address || existing.address,
+          lastOrderDate: date,
+          totalSpent: (existing.totalSpent || 0) + total,
+          orderCount: (existing.orderCount || 0) + 1,
+          orderIds
+        };
+      }
+    } else {
+      customers.push({
+        name,
+        email,
+        phone,
+        address,
+        lastOrderDate: date,
+        totalSpent: total,
+        orderCount: 1,
+        orderIds: [order.id]
+      });
+    }
+    localStorage.setItem('SINGLESTORE_CUSTOMERS', JSON.stringify(customers));
+  }
+}
+
+export async function syncCustomersFromOrders(orders) {
+  if (!orders || orders.length === 0) return;
+  const customerMap = {};
+  for (const order of orders) {
+    if (!order.customerEmail) continue;
+    const email = order.customerEmail.toLowerCase().trim();
+    if (!customerMap[email]) {
+      customerMap[email] = {
+        name: order.customerName || 'Anonymous Customer',
+        email: email,
+        phone: order.customerPhone || '',
+        address: order.shippingAddress || '',
+        lastOrderDate: order.date || new Date().toISOString(),
+        totalSpent: 0,
+        orderCount: 0,
+        orderIds: []
+      };
+    }
+    const c = customerMap[email];
+    if (!c.orderIds.includes(order.id)) {
+      c.orderIds.push(order.id);
+      c.orderCount += 1;
+      c.totalSpent += parseFloat(order.total) || 0;
+      if (new Date(order.date) > new Date(c.lastOrderDate)) {
+        c.lastOrderDate = order.date;
+        c.address = order.shippingAddress || c.address;
+        c.phone = order.customerPhone || c.phone;
+        c.name = order.customerName || c.name;
+      }
+    }
+  }
+
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      for (const email of Object.keys(customerMap)) {
+        await setDoc(doc(firestoreDb, 'customers', email), customerMap[email]);
+      }
+    } catch (e) {
+      console.error("Firestore syncCustomersFromOrders error:", e);
+    }
+  } else {
+    localStorage.setItem('SINGLESTORE_CUSTOMERS', JSON.stringify(Object.values(customerMap)));
   }
 }

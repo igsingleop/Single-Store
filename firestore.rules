@@ -43,5 +43,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // 6. Customers Collection
+    // Anyone can place an order (create/update profile), and Admin can view/edit profiles.
+    match /customers/{customerEmail} {
+      allow read, write: if true;
+    }
   }
 }
