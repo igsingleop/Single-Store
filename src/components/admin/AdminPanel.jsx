@@ -171,69 +171,41 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
 
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 500;
-        const MAX_HEIGHT = 500;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
+      const originalBase64 = evt.target.result;
+      
+      setImageUploading(true);
+      fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          image: originalBase64,
+          filename: file.name
+        })
+      })
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Upload failed with status ${res.status}`);
         }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Compress image to JPEG at 0.7 quality to conserve LocalStorage/memory quotas
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        
-        setImageUploading(true);
-        fetch('/api/upload', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            image: compressedBase64,
-            filename: file.name
-          })
-        })
-        .then(async (res) => {
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error || `Upload failed with status ${res.status}`);
-          }
-          return res.json();
-        })
-        .then((data) => {
-          if (data.success && data.url) {
-            setPosterImage(data.url);
-          } else {
-            throw new Error('Upload succeeded but no public URL returned');
-          }
-        })
-        .catch((err) => {
-          console.warn("Backblaze B2 upload failed, using local Base64 string fallback:", err);
-          alert("B2 storage not available or configured. Image saved to local session. (" + err.message + ")");
-          setPosterImage(compressedBase64);
-        })
-        .finally(() => {
-          setImageUploading(false);
-        });
-      };
-      img.src = evt.target.result;
+        return res.json();
+      })
+      .then((data) => {
+        if (data.success && data.url) {
+          setPosterImage(data.url);
+        } else {
+          throw new Error('Upload succeeded but no public URL returned');
+        }
+      })
+      .catch((err) => {
+        console.warn("Backblaze B2 upload failed, using local Base64 string fallback:", err);
+        alert("B2 storage not available or configured. Image saved to local session. (" + err.message + ")");
+        setPosterImage(originalBase64);
+      })
+      .finally(() => {
+        setImageUploading(false);
+      });
     };
     reader.readAsDataURL(file);
   };
@@ -289,71 +261,44 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const handleMultipleImageUpload = (index, file) => {
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 500;
-        const MAX_HEIGHT = 500;
-        let width = img.width;
-        let height = img.height;
+      const originalBase64 = evt.target.result;
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
+      setMultiplePosters(prev => prev.map((item, idx) => 
+        idx === index ? { ...item, uploading: true } : item
+      ));
+
+      fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          image: originalBase64,
+          filename: file.name
+        })
+      })
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Upload failed with status ${res.status}`);
         }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-
-        setMultiplePosters(prev => prev.map((item, idx) => 
-          idx === index ? { ...item, uploading: true } : item
-        ));
-
-        fetch('/api/upload', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            image: compressedBase64,
-            filename: file.name
-          })
-        })
-        .then(async (res) => {
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error || `Upload failed with status ${res.status}`);
-          }
-          return res.json();
-        })
-        .then((data) => {
-          if (data.success && data.url) {
-            setMultiplePosters(prev => prev.map((item, idx) => 
-              idx === index ? { ...item, image: data.url, uploading: false } : item
-            ));
-          } else {
-            throw new Error('No public URL returned');
-          }
-        })
-        .catch((err) => {
-          console.warn("Backblaze B2 upload failed, using local Base64 fallback:", err);
+        return res.json();
+      })
+      .then((data) => {
+        if (data.success && data.url) {
           setMultiplePosters(prev => prev.map((item, idx) => 
-            idx === index ? { ...item, image: compressedBase64, uploading: false } : item
+            idx === index ? { ...item, image: data.url, uploading: false } : item
           ));
-        });
-      };
-      img.src = evt.target.result;
+        } else {
+          throw new Error('No public URL returned');
+        }
+      })
+      .catch((err) => {
+        console.warn("Backblaze B2 upload failed, using local Base64 fallback:", err);
+        setMultiplePosters(prev => prev.map((item, idx) => 
+          idx === index ? { ...item, image: originalBase64, uploading: false } : item
+        ));
+      });
     };
     reader.readAsDataURL(file);
   };
@@ -385,67 +330,40 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
 
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 500;
-          const MAX_HEIGHT = 500;
-          let width = img.width;
-          let height = img.height;
+        const originalBase64 = evt.target.result;
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
+        fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            image: originalBase64,
+            filename: file.name
+          })
+        })
+        .then(async (res) => {
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Upload failed with status ${res.status}`);
           }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-
-          fetch('/api/upload', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              image: compressedBase64,
-              filename: file.name
-            })
-          })
-          .then(async (res) => {
-            if (!res.ok) {
-              const errData = await res.json().catch(() => ({}));
-              throw new Error(errData.error || `Upload failed with status ${res.status}`);
-            }
-            return res.json();
-          })
-          .then((data) => {
-            if (data.success && data.url) {
-              setMultiplePosters(prev => prev.map((item) => 
-                item.id === tempId ? { ...item, image: data.url, uploading: false } : item
-              ));
-            } else {
-              throw new Error('No public URL returned');
-            }
-          })
-          .catch((err) => {
-            console.warn("Backblaze B2 upload failed, using local Base64 fallback:", err);
+          return res.json();
+        })
+        .then((data) => {
+          if (data.success && data.url) {
             setMultiplePosters(prev => prev.map((item) => 
-              item.id === tempId ? { ...item, image: compressedBase64, uploading: false } : item
+              item.id === tempId ? { ...item, image: data.url, uploading: false } : item
             ));
-          });
-        };
-        img.src = evt.target.result;
+          } else {
+            throw new Error('No public URL returned');
+          }
+        })
+        .catch((err) => {
+          console.warn("Backblaze B2 upload failed, using local Base64 fallback:", err);
+          setMultiplePosters(prev => prev.map((item) => 
+            item.id === tempId ? { ...item, image: originalBase64, uploading: false } : item
+          ));
+        });
       };
       reader.readAsDataURL(file);
     });
