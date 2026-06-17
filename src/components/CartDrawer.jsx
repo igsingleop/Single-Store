@@ -11,7 +11,8 @@ export default function CartDrawer({
   onUpdateQuantity,
   coupons = [],
   appliedCoupon = null,
-  onApplyCoupon
+  onApplyCoupon,
+  onStartShopping
 }) {
   const [couponCode, setCouponCodeState] = useState('');
   const [couponError, setCouponError] = useState('');
@@ -120,7 +121,10 @@ export default function CartDrawer({
                     Looks like you haven't added any premium posters yet.
                   </p>
                   <button
-                    onClick={onClose}
+                    onClick={() => {
+                      if (onStartShopping) onStartShopping();
+                      onClose();
+                    }}
                     className="mt-6 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition-colors"
                   >
                     Start Shopping

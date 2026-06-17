@@ -233,20 +233,6 @@ export async function getUserProfileDetails(uid, defaultEmail) {
 export async function updateUserProfileDetails(uid, profileData) {
   let finalPhotoURL = profileData.photoURL || '';
 
-  // 2. Update Core Auth Profile (with placeholder/null photoURL to avoid Firebase Auth limit)
-  if (isFirebaseConfigured && auth && auth.currentUser) {
-    try {
-      // Base64 strings are too long for Firebase Auth profile photoURL (max 2048 chars).
-      // We pass null here and store the full Base64 string in Firestore/LocalStorage.
-      await updateProfile(auth.currentUser, {
-        displayName: profileData.displayName,
-        photoURL: null
-      });
-    } catch (err) {
-      console.warn("Core Auth profile update failed:", err);
-    }
-  }
-
   const extendedData = {
     phone: profileData.phone || '',
     dob: profileData.dob || '',
@@ -258,23 +244,15 @@ export async function updateUserProfileDetails(uid, profileData) {
     photoURL: finalPhotoURL // Stores either short CDN URL or Base64 fallback
   };
 
-  // 3. Update Firestore document (with permission error fallback)
-  if (isFirebaseConfigured && auth && firestoreDb) {
-    try {
-      const docRef = doc(firestoreDb, 'users', uid);
-      await setDoc(docRef, extendedData, { merge: true });
-    } catch (e) {
-      console.warn("Firestore save user profile details failed (permissions or configuration issues), falling back to LocalStorage:", e);
-    }
-  }
-
-  // Save to LocalStorage as fallback/backup
+  // 1. Immediately update LocalStorage fallback/backup (instant)
   const key = `SINGLESTORE_PROFILE_${uid}`;
   localStorage.setItem(key, JSON.stringify(extendedData));
 
+  let updated = null;
+
   if (isFirebaseConfigured && auth && auth.currentUser) {
     // Clone user object to trigger reactive state updates in subscriber hooks
-    const updated = {
+    updated = {
       uid: auth.currentUser.uid,
       email: auth.currentUser.email,
       displayName: profileData.displayName || auth.currentUser.displayName,
@@ -282,9 +260,29 @@ export async function updateUserProfileDetails(uid, profileData) {
     };
     localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(updated));
     notifyListeners(updated);
-    return { user: updated, details: extendedData };
+
+    // Asynchronously update Firebase in the background
+    (async () => {
+      try {
+        await updateProfile(auth.currentUser, {
+          displayName: profileData.displayName,
+          photoURL: null
+        });
+      } catch (err) {
+        console.warn("Core Auth profile update failed in background:", err);
+      }
+
+      if (firestoreDb) {
+        try {
+          const docRef = doc(firestoreDb, 'users', uid);
+          await setDoc(docRef, extendedData, { merge: true });
+        } catch (e) {
+          console.warn("Firestore save user profile details failed in background:", e);
+        }
+      }
+    })();
   } else if (mockUser) {
-    // 4. Fallback mock update
+    // Fallback mock update
     const users = getFallbackUsers();
     const index = users.findIndex(u => u.uid === uid);
     if (index > -1) {
@@ -300,7 +298,10 @@ export async function updateUserProfileDetails(uid, profileData) {
     };
     localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(mockUser));
     notifyListeners(mockUser);
-    return { user: mockUser, details: extendedData };
+    updated = mockUser;
+  } else {
+    throw new Error("No active user session.");
   }
-  throw new Error("No active user session.");
+
+  return { user: updated, details: extendedData };
 }

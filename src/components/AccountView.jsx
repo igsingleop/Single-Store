@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package, 
@@ -10,7 +10,9 @@ import {
   Phone, 
   MapPin, 
   Check, 
-  Clock
+  Clock,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { getOrders, getEstimatedDeliveryDate } from '../utils/db';
 import { getUserProfileDetails, updateUserProfileDetails } from '../utils/auth';
@@ -20,6 +22,55 @@ export default function AccountView({ setView, user, onLogout }) {
   const [details, setDetails] = useState(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
+  const [expandedOrders, setExpandedOrders] = useState({});
+
+  const avatarInputRef = useRef(null);
+
+  const triggerAvatarUpload = () => {
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 500 * 1024) {
+      alert("Image size should be less than 500KB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Image = reader.result;
+      try {
+        setLoading(true);
+        const response = await updateUserProfileDetails(user.uid, {
+          displayName: user.displayName || '',
+          photoURL: base64Image,
+          phone: details?.phone || '',
+          dob: details?.dob || '',
+          address: details?.address || '',
+          city: details?.city || '',
+          pinCode: details?.pinCode || '',
+          country: details?.country || 'India',
+          contactEmail: details?.contactEmail || user.email || ''
+        });
+        setDetails(response.details);
+      } catch (err) {
+        alert(err.message || "Failed to update profile photo.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const toggleOrderDetails = (orderId) => {
+    setExpandedOrders(prev => ({
+      ...prev,
+      [orderId]: !prev[orderId]
+    }));
+  };
 
   // Form states
   const [editName, setEditName] = useState('');
@@ -114,7 +165,7 @@ export default function AccountView({ setView, user, onLogout }) {
       setTimeout(() => {
         setIsEditing(false);
         setUpdateSuccess('');
-      }, 1000);
+      }, 150);
     } catch (err) {
       setUpdateError(err.message || "Failed to update profile.");
     } finally {
@@ -185,12 +236,19 @@ export default function AccountView({ setView, user, onLogout }) {
               </div>
             )}
             <button
-              onClick={enterEditMode}
+              onClick={triggerAvatarUpload}
               className="absolute -bottom-1.5 -right-1.5 p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-md border-2 border-white dark:border-zinc-900 transition-all duration-300"
-              title="Edit Profile Details"
+              title="Edit Profile Picture"
             >
               <Edit3 className="w-4 h-4" />
             </button>
+            <input
+              type="file"
+              ref={avatarInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
           </div>
 
           <h2 className="font-outfit text-xl font-extrabold text-zinc-900 dark:text-white flex items-center gap-2 mb-1 justify-center">
@@ -629,81 +687,125 @@ export default function AccountView({ setView, user, onLogout }) {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-6 max-h-[480px] overflow-y-auto pr-1">
-                    {orders.map((order, idx) => (
-                      <motion.div
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.04 }}
-                        key={order.id}
-                        className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl border border-zinc-200/50 dark:border-zinc-800 shadow-sm flex flex-col justify-between"
-                      >
-                        {/* Order Top Bar */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-zinc-200/50 dark:border-zinc-800 gap-3">
-                          <div>
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-xs font-black text-zinc-900 dark:text-white">
-                                Order #{order.id.substring(0, 14)}
-                              </span>
-                              <span className={`px-2 py-0.5 rounded border text-[9px] font-black uppercase ${getStatusStyle(order.status)}`}>
-                                {order.status}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-500 dark:text-zinc-450 mt-1 font-medium font-sans">
-                              <div className="flex items-center space-x-1">
-                                <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                                <span>{new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}</span>
-                              </div>
-                              <div className="flex items-center space-x-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                                <span>Est. Delivery: <strong className="text-blue-650 dark:text-blue-400 font-bold">{new Date(getEstimatedDeliveryDate(order.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</strong></span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4 text-left sm:text-right">
-                            <div>
-                              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Grand Total</span>
-                              <span className="font-inter text-sm font-black text-zinc-900 dark:text-white">
-                                {formatPrice(order.total)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Order Items list */}
-                        <div className="py-4 space-y-3">
-                          {order.items && order.items.map((item, itemIdx) => (
-                            <div key={item.cartId || itemIdx} className="flex items-center gap-4">
-                              <img
-                                src={item.image}
-                                alt={item.title}
-                                className="w-10 h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2">
-                                  <h4 className="font-outfit text-xs font-bold text-zinc-800 dark:text-white line-clamp-1">
-                                    {item.title}
-                                  </h4>
-                                  <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
-                                    Qty: {item.quantity || 1}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <span className="font-inter text-xs font-extrabold text-zinc-800 dark:text-zinc-200 block">
-                                  {formatPrice(parseFloat(item.price) * (item.quantity || 1))}
+                  <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
+                    {orders.map((order, idx) => {
+                      const isExpanded = !!expandedOrders[order.id];
+                      return (
+                        <motion.div
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.04 }}
+                          key={order.id}
+                          className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl border border-zinc-200/50 dark:border-zinc-800 shadow-sm flex flex-col justify-between transition-all duration-300"
+                        >
+                          {/* Order Collapsed Summary Bar */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Order ID & Status</span>
+                              <div className="flex flex-wrap items-center gap-2.5">
+                                <span className="text-sm font-black text-zinc-900 dark:text-white font-mono">
+                                  #{order.id.substring(0, 14)}
                                 </span>
-                                {(item.quantity || 1) > 1 && (
-                                  <span className="text-[8px] text-zinc-400 dark:text-zinc-500 block font-medium">
-                                    {formatPrice(item.price)} each
-                                  </span>
-                                )}
+                                <span className={`px-2 py-0.5 rounded border text-[9px] font-black uppercase inline-block ${getStatusStyle(order.status)}`}>
+                                  {order.status || 'Placed'}
+                                </span>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    ))}
+                            
+                            <div className="flex items-center justify-between sm:justify-end gap-6">
+                              <div>
+                                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block sm:text-right">Grand Total</span>
+                                <span className="font-inter text-sm font-black text-zinc-900 dark:text-white">
+                                  {formatPrice(order.total)}
+                                </span>
+                              </div>
+                              
+                              <button
+                                onClick={() => toggleOrderDetails(order.id)}
+                                className="px-4 py-2 bg-blue-50 dark:bg-blue-955/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-100 dark:border-blue-900/40 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+                              >
+                                <span>{isExpanded ? 'Hide Details' : 'View Details'}</span>
+                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Expanded Order Details */}
+                          <AnimatePresence initial={false}>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="pt-4 mt-4 border-t border-zinc-200/50 dark:border-zinc-800/80 space-y-4">
+                                  {/* Info Badges & Delivery Estimate */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-100/30 dark:bg-zinc-955/20 p-4 rounded-xl border border-zinc-200/30 dark:border-zinc-800/50">
+                                    <div>
+                                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Order Date</span>
+                                      <div className="flex items-center gap-1 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 font-sans">
+                                        <Clock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                        <span>{new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}</span>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Est. Delivery Date</span>
+                                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 font-sans">
+                                        <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                        <span>{new Date(getEstimatedDeliveryDate(order.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Order Items list */}
+                                  <div className="space-y-3">
+                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Items & Quantities</span>
+                                    {order.items && order.items.map((item, itemIdx) => (
+                                      <div key={item.cartId || itemIdx} className="flex items-center gap-4 p-2 bg-zinc-50/50 dark:bg-zinc-900/20 rounded-xl border border-zinc-100 dark:border-zinc-800/60">
+                                        <img
+                                          src={item.image}
+                                          alt={item.title}
+                                          className="w-10 h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <div>
+                                              <h4 className="font-outfit text-xs font-bold text-zinc-800 dark:text-white line-clamp-1">
+                                                {item.title}
+                                              </h4>
+                                              {(item.size || item.frame) && (
+                                                <span className="text-[9px] text-zinc-455 dark:text-zinc-500 font-semibold block mt-0.5">
+                                                  {item.size} • {item.frame}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 whitespace-nowrap">
+                                              Qty: {item.quantity || 1}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                          <span className="font-inter text-xs font-extrabold text-zinc-800 dark:text-zinc-200 block">
+                                            {formatPrice(parseFloat(item.price) * (item.quantity || 1))}
+                                          </span>
+                                          {(item.quantity || 1) > 1 && (
+                                            <span className="text-[8px] text-zinc-400 dark:text-zinc-500 block font-medium">
+                                              {formatPrice(item.price)} each
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 )}
               </motion.div>

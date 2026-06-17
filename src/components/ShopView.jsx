@@ -33,6 +33,26 @@ export default function ShopView({ posters, searchQuery, onSelectPoster, onAddTo
     }
   };
 
+  const categoryContainerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.04
+      }
+    }
+  };
+
+  const categoryItemVariants = {
+    hidden: { opacity: 0, scale: 0.9, y: -8 },
+    show: { 
+      opacity: 1, 
+      scale: 1, 
+      y: 0,
+      transition: { type: "spring", stiffness: 400, damping: 25 }
+    }
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto px-6 py-12">
       {/* Page Header */}
@@ -45,26 +65,40 @@ export default function ShopView({ posters, searchQuery, onSelectPoster, onAddTo
         </p>
       </div>
 
-      {/* Category Navigation (Neomorphic Pills) */}
-      <div className="flex flex-wrap items-center justify-center gap-3 mb-12">
+      {/* Category Navigation (Neomorphic Pills with Sliding Indicator) */}
+      <motion.div
+        variants={categoryContainerVariants}
+        initial="hidden"
+        animate="show"
+        className="flex flex-wrap items-center justify-center gap-3 mb-12"
+      >
         {categories.map((cat) => {
           const isActive = selectedCategory === cat;
           return (
             <motion.button
               key={cat}
+              variants={categoryItemVariants}
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-6 py-2.5 rounded-full font-medium text-sm border transition-all duration-300 ${
+              className={`relative px-6 py-2.5 rounded-full font-semibold text-sm border transition-colors duration-300 focus:outline-none ${
                 isActive
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20'
-                  : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 shadow-neo-out hover:shadow-neo-in'
+                  ? 'border-transparent text-white'
+                  : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-300 shadow-neo-out hover:shadow-neo-in hover:text-zinc-900 dark:hover:text-white'
               }`}
             >
-              {cat}
+              {isActive && (
+                <motion.span
+                  layoutId="activeCategoryHighlight"
+                  className="absolute inset-0 bg-blue-600 rounded-full shadow-lg shadow-blue-500/25"
+                  transition={{ type: "spring", stiffness: 355, damping: 26 }}
+                />
+              )}
+              <span className="relative z-10">{cat}</span>
             </motion.button>
           );
         })}
-      </div>
+      </motion.div>
 
       {/* Product Display count */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-200 dark:border-zinc-800">

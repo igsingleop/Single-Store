@@ -100,7 +100,7 @@ export default function Navbar({
         {/* Wishlist Trigger (Neomorphic + Badge) */}
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => setView('wishlist')}
+          onClick={() => setView(currentView === 'wishlist' ? 'home' : 'wishlist')}
           className={`hidden md:flex p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in relative transition-all duration-300 ${
             currentView === 'wishlist' ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-200'
           }`}
@@ -146,7 +146,10 @@ export default function Navbar({
         {/* Profile Trigger (Neomorphic) */}
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => setView(user ? 'account' : 'login')}
+          onClick={() => {
+            const isAlreadyOnProfile = currentView === 'account' || currentView === 'login';
+            setView(isAlreadyOnProfile ? 'home' : (user ? 'account' : 'login'));
+          }}
           className={`hidden md:flex p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all duration-300 ${
             currentView === 'account' || currentView === 'login' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-200'
           }`}
@@ -191,7 +194,7 @@ export default function Navbar({
               Shop All
             </button>
             <button
-              onClick={() => { setView('wishlist'); setIsMobileMenuOpen(false); }}
+              onClick={() => { setView(currentView === 'wishlist' ? 'home' : 'wishlist'); setIsMobileMenuOpen(false); }}
               className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between ${
                 currentView === 'wishlist' ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'
               }`}
@@ -204,7 +207,11 @@ export default function Navbar({
               )}
             </button>
             <button
-              onClick={() => { setView(user ? 'account' : 'login'); setIsMobileMenuOpen(false); }}
+              onClick={() => {
+                const isAlreadyOnProfile = currentView === 'account' || currentView === 'login';
+                setView(isAlreadyOnProfile ? 'home' : (user ? 'account' : 'login'));
+                setIsMobileMenuOpen(false);
+              }}
               className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 ${
                 currentView === 'account' || currentView === 'login' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-300'
               }`}

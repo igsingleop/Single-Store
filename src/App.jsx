@@ -28,14 +28,7 @@ const AdminPanel = lazy(() => import('./components/admin/AdminPanel'));
 const AccountView = lazy(() => import('./components/AccountView'));
 
 export default function App() {
-  const [currentView, setView] = useState(() => {
-    try {
-      const saved = localStorage.getItem('SINGLESTORE_CURRENT_VIEW');
-      return saved || 'home';
-    } catch {
-      return 'home';
-    }
-  });
+  const [currentView, setView] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPosterId, setSelectedPosterId] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -177,10 +170,7 @@ export default function App() {
     localStorage.setItem('singlestore_theme', theme);
   }, [theme]);
 
-  // View synchronization effect
-  useEffect(() => {
-    localStorage.setItem('SINGLESTORE_CURRENT_VIEW', currentView);
-  }, [currentView]);
+  // Initial view is always 'home' on page load.
 
   // Auth routing redirect guards
   useEffect(() => {
@@ -596,6 +586,7 @@ export default function App() {
         coupons={coupons}
         appliedCoupon={appliedCoupon}
         onApplyCoupon={setAppliedCoupon}
+        onStartShopping={() => setView('shop')}
       />
 
       {/* Product Detail Modal */}
