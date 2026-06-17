@@ -151,6 +151,16 @@ export async function initDB() {
 // Initialize on import (safe for client environments)
 initDB();
 
+function formatPosterImage(image) {
+  if (!image) return 'https://via.placeholder.com/400x600?text=No+Image';
+  const b2Match = image.match(/https:\/\/f\d+\.backblazeb2\.com\/file\/[^/]+\/(.+)/);
+  if (b2Match) {
+    const filename = decodeURIComponent(b2Match[1]);
+    return `/api/posters?filename=${encodeURIComponent(filename)}`;
+  }
+  return image;
+}
+
 // --- Poster Operations ---
 export async function getPosters() {
   let list = [];
@@ -168,10 +178,11 @@ export async function getPosters() {
     list = safeParse(DB_POSTERS_KEY, defaultPosters);
   }
 
-  if (list.length === 0) {
-    return defaultPosters;
-  }
-  return list;
+  const finalResult = list.length === 0 ? defaultPosters : list;
+  return finalResult.map(p => ({
+    ...p,
+    image: formatPosterImage(p.image)
+  }));
 }
 
 export async function savePosters(posters) {

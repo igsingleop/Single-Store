@@ -16,13 +16,10 @@ export default async function handler(req, res) {
   const bucketName = process.env.B2_BUCKET_NAME;
 
   if (!keyId || !applicationKey || !bucketId || !bucketName) {
-    return res.status(401).json({
-      error: 'Backblaze B2 cloud storage is not configured on the server. Please check environment variables.'
-    });
+    return res.status(401).json({ error: 'Backblaze B2 cloud storage is not configured on the server.' });
   }
 
   try {
-    // 1. Clean up base64 payload
     let base64Data = image;
     if (image.startsWith('data:')) {
       const parts = image.split(';base64,');
@@ -32,13 +29,11 @@ export default async function handler(req, res) {
     }
 
     const fileBuffer = Buffer.from(base64Data, 'base64');
-    
-    // Generate clean safe filename with timestamp
     const originalName = filename || 'upload.jpg';
     const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const finalFilename = `posters/poster_${Date.now()}_${sanitizedName}`;
 
-    // 2. Authorize B2 Account
+    // Authorize B2
     const basicAuthToken = Buffer.from(`${keyId}:${applicationKey}`).toString('base64');
     const authRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
       headers: {
@@ -52,9 +47,9 @@ export default async function handler(req, res) {
     }
 
     const authData = await authRes.json();
-    const { apiUrl, authorizationToken, downloadUrl } = authData;
+    const { apiUrl, authorizationToken } = authData;
 
-    // 3. Get Upload URL
+    // Get Upload URL
     const uploadUrlRes = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
       method: 'POST',
       headers: {
@@ -72,12 +67,14 @@ export default async function handler(req, res) {
     const uploadUrlData = await uploadUrlRes.json();
     const { uploadUrl, authorizationToken: uploadAuthToken } = uploadUrlData;
 
-    // 4. Upload raw file buffer to Backblaze B2
+    // Upload with slash preserving filename encoding
+    const slashPreservingFilename = finalFilename.split('/').map(encodeURIComponent).join('/');
+
     const uploadRes = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
         'Authorization': uploadAuthToken,
-        'X-Bz-File-Name': encodeURIComponent(finalFilename),
+        'X-Bz-File-Name': slashPreservingFilename,
         'Content-Type': 'image/jpeg',
         'Content-Length': fileBuffer.length.toString(),
         'X-Bz-Content-Sha1': 'do_not_verify'
@@ -87,13 +84,11 @@ export default async function handler(req, res) {
 
     if (!uploadRes.ok) {
       const errText = await uploadRes.text();
-      throw new Error(`B2 file upload failed: ${errText}`);
+      throw new Error(`B2 Upload failed: ${errText}`);
     }
 
     const uploadResult = await uploadRes.json();
-
-    // 5. Construct public URL using the downloadUrl, bucket name and filename
-    const publicUrl = `${downloadUrl}/file/${bucketName}/${finalFilename}`;
+    const publicUrl = `/api/posters?filename=${encodeURIComponent(finalFilename)}`;
 
     return res.status(200).json({
       success: true,
@@ -102,7 +97,7 @@ export default async function handler(req, res) {
       fileId: uploadResult.fileId
     });
   } catch (error) {
-    console.error('Error in Backblaze upload handler:', error);
+    console.error('Error in /api/upload handler:', error);
     return res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 }

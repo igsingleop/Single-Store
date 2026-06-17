@@ -108,6 +108,80 @@ export default defineConfig(({ mode }) => {
               return;
             }
 
+            if (url.pathname === '/api/posters' && req.method === 'GET') {
+              try {
+                const filename = url.searchParams.get('filename');
+                if (!filename) {
+                  res.writeHead(400, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ error: 'filename query parameter is required' }));
+                  return;
+                }
+
+                const keyId = env.B2_APPLICATION_KEY_ID;
+                const applicationKey = env.B2_APPLICATION_KEY;
+                const bucketName = env.B2_BUCKET_NAME;
+
+                if (!keyId || !applicationKey || !bucketName) {
+                  res.writeHead(401, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ error: 'Backblaze B2 configurations are missing in local server env.' }));
+                  return;
+                }
+
+                // Authorize B2
+                const basicAuthToken = Buffer.from(`${keyId}:${applicationKey}`).toString('base64');
+                const authRes = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+                  headers: {
+                    'Authorization': `Basic ${basicAuthToken}`
+                  }
+                });
+
+                if (!authRes.ok) {
+                  const errText = await authRes.text();
+                  throw new Error(`B2 Authorization failed: ${errText}`);
+                }
+
+                const authData = await authRes.json();
+                const { downloadUrl, authorizationToken } = authData;
+
+                // Fetch the file from B2
+                const encodedFilename = filename.split('/').map(encodeURIComponent).join('/');
+                const fileUrl = `${downloadUrl}/file/${bucketName}/${encodedFilename}`;
+
+                const downloadRes = await fetch(fileUrl, {
+                  headers: {
+                    'Authorization': authorizationToken
+                  }
+                });
+
+                if (!downloadRes.ok) {
+                  res.writeHead(downloadRes.status, { 'Content-Type': 'text/plain' });
+                  res.end(`Failed to fetch file from B2: ${downloadRes.statusText}`);
+                  return;
+                }
+
+                const contentType = downloadRes.headers.get('content-type') || 'application/octet-stream';
+                const contentLength = downloadRes.headers.get('content-length');
+
+                const responseHeaders = {
+                  'Content-Type': contentType,
+                  'Cache-Control': 'public, max-age=86400'
+                };
+                if (contentLength) {
+                  responseHeaders['Content-Length'] = contentLength;
+                }
+
+                res.writeHead(200, responseHeaders);
+
+                const arrayBuffer = await downloadRes.arrayBuffer();
+                res.end(Buffer.from(arrayBuffer));
+              } catch (error) {
+                console.error('Vite Dev API error (posters):', error);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: error.message || 'Internal Server Error' }));
+              }
+              return;
+            }
+
             if (url.pathname === '/api/upload' && req.method === 'POST') {
               try {
                 let body = '';
@@ -161,7 +235,7 @@ export default defineConfig(({ mode }) => {
                 }
 
                 const authData = await authRes.json();
-                const { apiUrl, authorizationToken, downloadUrl } = authData;
+                const { apiUrl, authorizationToken } = authData;
 
                 // Get Upload URL
                 const uploadUrlRes = await fetch(`${apiUrl}/b2api/v2/b2_get_upload_url`, {
@@ -181,12 +255,14 @@ export default defineConfig(({ mode }) => {
                 const uploadUrlData = await uploadUrlRes.json();
                 const { uploadUrl, authorizationToken: uploadAuthToken } = uploadUrlData;
 
-                // Upload
+                // Upload with slash preserving filename encoding
+                const slashPreservingFilename = finalFilename.split('/').map(encodeURIComponent).join('/');
+
                 const uploadRes = await fetch(uploadUrl, {
                   method: 'POST',
                   headers: {
                     'Authorization': uploadAuthToken,
-                    'X-Bz-File-Name': encodeURIComponent(finalFilename),
+                    'X-Bz-File-Name': slashPreservingFilename,
                     'Content-Type': 'image/jpeg',
                     'Content-Length': fileBuffer.length.toString(),
                     'X-Bz-Content-Sha1': 'do_not_verify'
@@ -200,7 +276,7 @@ export default defineConfig(({ mode }) => {
                 }
 
                 const uploadResult = await uploadRes.json();
-                const publicUrl = `${downloadUrl}/file/${bucketName}/${finalFilename}`;
+                const publicUrl = `/api/posters?filename=${encodeURIComponent(finalFilename)}`;
 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
