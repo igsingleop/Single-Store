@@ -34,7 +34,8 @@ import {
   addCoupon,
   deleteCoupon,
   getCustomers,
-  syncCustomersFromOrders
+  syncCustomersFromOrders,
+  getEstimatedDeliveryDate
 } from '../../utils/db';
 
 export default function AdminPanel({ session, onLogout, onBackToStore = () => window.location.href = '/' }) {
@@ -1907,6 +1908,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                         {selectedOrderDetails.status}
                       </span>
                     </p>
+                    <p><strong className="text-zinc-950 dark:text-white font-bold">Est. Delivery:</strong> {new Date(getEstimatedDeliveryDate(selectedOrderDetails.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
                   </div>
                 </div>
               </div>

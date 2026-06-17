@@ -5,7 +5,8 @@ import {
   getCart,
   saveCart,
   initDB,
-  getCoupons
+  getCoupons,
+  getEstimatedDeliveryDate
 } from './utils/db';
 import { subscribeAuth, logout } from './utils/auth';
 
@@ -18,7 +19,7 @@ import WishlistView from './components/WishlistView';
 import ProductDetailModal from './components/ProductDetailModal';
 import CartDrawer from './components/CartDrawer';
 import PosterCard from './components/PosterCard';
-import { ArrowRight, ShieldCheck, Mail, ShieldAlert, ArrowLeft, Sun, Moon } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Mail, ShieldAlert, ArrowLeft, Sun, Moon, Calendar } from 'lucide-react';
 
 // Lazy-loaded components for optimal bundle size and CPU execution time
 const CheckoutView = lazy(() => import('./components/CheckoutView'));
@@ -554,11 +555,17 @@ export default function App() {
                 </div>
                 <div className="flex justify-between text-zinc-500">
                   <span>Shipping Address:</span>
-                  <span className="font-bold text-zinc-800 dark:text-white">{completedOrder.customerEmail}</span>
+                  <span className="font-bold text-zinc-800 dark:text-white truncate max-w-[200px]" title={completedOrder.shippingAddress}>{completedOrder.shippingAddress || completedOrder.customerEmail}</span>
                 </div>
-                <div className="flex justify-between text-zinc-500">
+                <div className="flex justify-between text-zinc-500 pb-2 border-b border-zinc-200/50 dark:border-zinc-800/80">
                   <span>Grand Total:</span>
                   <span className="font-extrabold text-zinc-800 dark:text-white">{formatPrice(completedOrder.total)}</span>
+                </div>
+                <div className="flex justify-between text-zinc-500 pt-1 font-sans">
+                  <span className="font-semibold flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-blue-500" /> Est. Delivery:</span>
+                  <span className="font-extrabold text-blue-600 dark:text-blue-400">
+                    {new Date(getEstimatedDeliveryDate(completedOrder.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
                 </div>
               </div>
 

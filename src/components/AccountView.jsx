@@ -12,7 +12,7 @@ import {
   Check, 
   Clock
 } from 'lucide-react';
-import { getOrders } from '../utils/db';
+import { getOrders, getEstimatedDeliveryDate } from '../utils/db';
 import { getUserProfileDetails, updateUserProfileDetails } from '../utils/auth';
 
 export default function AccountView({ setView, user, onLogout }) {
@@ -649,9 +649,15 @@ export default function AccountView({ setView, user, onLogout }) {
                                 {order.status}
                               </span>
                             </div>
-                            <div className="flex items-center space-x-1 text-[10px] text-zinc-500 dark:text-zinc-500 mt-1 font-medium">
-                              <Clock className="w-3.5 h-3.5" />
-                              <span>{new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}</span>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-500 dark:text-zinc-450 mt-1 font-medium font-sans">
+                              <div className="flex items-center space-x-1">
+                                <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                                <span>{new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}</span>
+                              </div>
+                              <div className="flex items-center space-x-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                                <span>Est. Delivery: <strong className="text-blue-650 dark:text-blue-400 font-bold">{new Date(getEstimatedDeliveryDate(order.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</strong></span>
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-4 text-left sm:text-right">
@@ -673,19 +679,26 @@ export default function AccountView({ setView, user, onLogout }) {
                                 alt={item.title}
                                 className="w-10 h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white"
                               />
-                              <div className="flex-1">
-                                <h4 className="font-outfit text-xs font-bold text-zinc-800 dark:text-white line-clamp-1">
-                                  {item.title}
-                                </h4>
-                                {((item.size && item.size !== '18x24"') || (item.frame && item.frame !== 'Print Only')) && (
-                                  <p className="text-[9px] text-zinc-500 dark:text-zinc-500 font-bold uppercase tracking-wider">
-                                    Size: {item.size} / Frame: {item.frame}
-                                  </p>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <h4 className="font-outfit text-xs font-bold text-zinc-800 dark:text-white line-clamp-1">
+                                    {item.title}
+                                  </h4>
+                                  <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
+                                    Qty: {item.quantity || 1}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="font-inter text-xs font-extrabold text-zinc-800 dark:text-zinc-200 block">
+                                  {formatPrice(parseFloat(item.price) * (item.quantity || 1))}
+                                </span>
+                                {(item.quantity || 1) > 1 && (
+                                  <span className="text-[8px] text-zinc-400 dark:text-zinc-500 block font-medium">
+                                    {formatPrice(item.price)} each
+                                  </span>
                                 )}
                               </div>
-                              <span className="font-inter text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                                {formatPrice(item.price)}
-                              </span>
                             </div>
                           ))}
                         </div>

@@ -609,3 +609,17 @@ export async function syncCustomersFromOrders(orders) {
     localStorage.setItem('SINGLESTORE_CUSTOMERS', JSON.stringify(Object.values(customerMap)));
   }
 }
+
+export function getEstimatedDeliveryDate(purchaseDateStr) {
+  if (!purchaseDateStr) return new Date().toISOString();
+  const date = new Date(purchaseDateStr);
+  let businessDaysAdded = 0;
+  while (businessDaysAdded < 5) {
+    date.setDate(date.getDate() + 1);
+    const dayOfWeek = date.getDay(); // 0 Sunday, 6 Saturday
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      businessDaysAdded++;
+    }
+  }
+  return date.toISOString();
+}
