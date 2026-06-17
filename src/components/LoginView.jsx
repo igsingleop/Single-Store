@@ -330,7 +330,7 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
           type="button"
           onClick={handleGoogleSignIn}
           disabled={loading}
-          className="w-full py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 text-zinc-800 dark:text-zinc-250 border border-zinc-200 dark:border-zinc-800 font-bold text-xs flex items-center justify-center shadow-sm hover:shadow-md transition-all duration-300"
+          className="w-full py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 font-bold text-xs flex items-center justify-center shadow-sm hover:shadow-md transition-all duration-300"
         >
           <svg className="w-4 h-4 mr-2.5" viewBox="0 0 24 24">
             <path
