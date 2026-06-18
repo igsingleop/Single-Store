@@ -49,5 +49,11 @@ service cloud.firestore {
     match /customers/{customerEmail} {
       allow read, write: if true;
     }
+
+    // 7. Reviews Collection
+    // Anyone can read reviews, and anyone can write reviews.
+    match /reviews/{reviewId} {
+      allow read, write: if true;
+    }
   }
 }
