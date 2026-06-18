@@ -19,7 +19,8 @@ import {
   FileSpreadsheet,
   Eye,
   X,
-  ChevronRight
+  ChevronRight,
+  Star
 } from 'lucide-react';
 import {
   getPosters,
@@ -35,7 +36,10 @@ import {
   deleteCoupon,
   getCustomers,
   syncCustomersFromOrders,
-  getEstimatedDeliveryDate
+  getEstimatedDeliveryDate,
+  getReviews,
+  deleteReview,
+  updateReview
 } from '../../utils/db';
 
 export default function AdminPanel({ session, onLogout, onBackToStore = () => window.location.href = '/' }) {
@@ -45,6 +49,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const [orders, setOrders] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [reviews, setReviews] = useState([]);
 
   // Form states for creating/editing poster
   const [editingId, setEditingId] = useState(null);
@@ -54,6 +59,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const [posterDiscountPrice, setPosterDiscountPrice] = useState('');
   const [posterDesc, setPosterDesc] = useState('');
   const [posterImage, setPosterImage] = useState('');
+  const [posterRating, setPosterRating] = useState(5);
   
   // Custom image input mode: file upload or external URL
   const [imageInputMode, setImageInputMode] = useState('file'); // 'file' or 'url'
@@ -61,7 +67,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
 
   const [addMode, setAddMode] = useState('single'); // 'single' or 'multiple'
   const [multiplePosters, setMultiplePosters] = useState([
-    { id: '1', title: '', category: '', price: '', discountPrice: '', description: '', image: '', imageInputMode: 'url', uploading: false }
+    { id: '1', title: '', category: '', price: '', discountPrice: '', description: '', image: '', rating: 5, imageInputMode: 'url', uploading: false }
   ]);
 
   // Coupon form states
@@ -76,6 +82,11 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [syncingCustomers, setSyncingCustomers] = useState(false);
 
+  // Review editing states
+  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [editReviewRating, setEditReviewRating] = useState(0);
+  const [editReviewComment, setEditReviewComment] = useState('');
+
   useEffect(() => {
     // Initial fetch
     const fetchAllData = async () => {
@@ -83,6 +94,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
       const dbOrders = await getOrders();
       const dbCoupons = await getCoupons();
       let dbCustomers = await getCustomers();
+      const dbReviews = await getReviews();
 
       // Automatically sync customer profiles if none exist but orders do
       if (dbCustomers.length === 0 && dbOrders.length > 0) {
@@ -101,6 +113,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
       setOrders(dbOrders);
       setCoupons(dbCoupons);
       setCustomers(dbCustomers);
+      setReviews(dbReviews);
     };
     fetchAllData();
 
@@ -229,7 +242,8 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
         price: parseFloat(posterPrice),
         discountPrice: posterDiscountPrice ? parseFloat(posterDiscountPrice) : null,
         description: posterDesc,
-        image: imgUrl
+        image: imgUrl,
+        rating: Number(posterRating)
       };
       await updatePoster(updated);
       alert("Poster updated successfully!");
@@ -243,7 +257,8 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
         price: parseFloat(posterPrice),
         discountPrice: posterDiscountPrice ? parseFloat(posterDiscountPrice) : null,
         description: posterDesc,
-        image: imgUrl
+        image: imgUrl,
+        rating: Number(posterRating)
       };
       await addPoster(newPoster);
       alert("Poster added successfully!");
@@ -256,6 +271,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
     setPosterDiscountPrice('');
     setPosterDesc('');
     setPosterImage('');
+    setPosterRating(5);
   };
 
   const handleMultipleImageUpload = (index, file) => {
@@ -382,6 +398,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
         discountPrice: '',
         description: '',
         image: '',
+        rating: 5,
         imageInputMode: 'url',
         uploading: false
       }
@@ -400,6 +417,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
           discountPrice: '',
           description: '',
           image: '',
+          rating: 5,
           imageInputMode: 'url',
           uploading: false
         }];
@@ -438,7 +456,8 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
         price: parseFloat(item.price),
         discountPrice: item.discountPrice ? parseFloat(item.discountPrice) : null,
         description: item.description.trim(),
-        image: item.image || 'https://via.placeholder.com/400x600?text=No+Image'
+        image: item.image || 'https://via.placeholder.com/400x600?text=No+Image',
+        rating: Number(item.rating || 5)
       };
       await addPoster(newPoster);
       count++;
@@ -455,6 +474,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
         discountPrice: '',
         description: '',
         image: '',
+        rating: 5,
         imageInputMode: 'url',
         uploading: false
       }
@@ -469,6 +489,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
     setPosterDiscountPrice(p.discountPrice || '');
     setPosterDesc(p.description || '');
     setPosterImage(p.image || '');
+    setPosterRating(p.rating || 5);
     setImageInputMode(p.image && p.image.startsWith('data:') ? 'file' : 'url');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -513,6 +534,32 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
       await deleteCoupon(code);
       alert("Coupon deleted successfully!");
     }
+  };
+
+  const handleEditReviewClick = (rev) => {
+    setEditingReviewId(rev.id);
+    setEditReviewRating(rev.rating);
+    setEditReviewComment(rev.comment);
+  };
+
+  const handleEditReviewSubmit = async (e, originalReview) => {
+    e.preventDefault();
+    if (editReviewRating < 1 || editReviewRating > 5) {
+      alert("Rating must be between 1 and 5 stars.");
+      return;
+    }
+    if (!editReviewComment.trim()) {
+      alert("Comment cannot be empty.");
+      return;
+    }
+    const updatedReview = {
+      ...originalReview,
+      rating: Number(editReviewRating),
+      comment: editReviewComment.trim()
+    };
+    await updateReview(updatedReview);
+    setEditingReviewId(null);
+    alert("Review updated successfully!");
   };
 
   // --- BULK OPERATIONS ---
@@ -687,6 +734,18 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
         >
           <Ticket className="w-4 h-4 animate-none" />
           <span>Coupons</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('reviews')}
+          className={`shrink-0 lg:shrink flex-1 lg:flex-none px-4 py-3 rounded-xl sm:rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2 transition-all duration-300 ${
+            activeTab === 'reviews'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55'
+          }`}
+        >
+          <Star className="w-4 h-4 animate-none" />
+          <span>Reviews</span>
         </button>
 
         <button
@@ -913,13 +972,14 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                             <th className="p-3 w-52">Image Source</th>
                             <th className="p-3 w-64">Poster Details</th>
                             <th className="p-3 w-44">Pricing</th>
+                            <th className="p-3 w-36">Rating</th>
                             <th className="p-3">Description</th>
                             <th className="p-3 w-12 text-center">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-200/40 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">
                           {multiplePosters.map((item, idx) => (
-                            <tr key={item.id} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-955/10">
+                            <tr key={item.id} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-950/10">
                               <td className="p-3 text-center font-bold text-zinc-400">{idx + 1}</td>
                               <td className="p-3">
                                 <div className="flex items-center gap-3">
@@ -1027,6 +1087,19 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                                     />
                                   </div>
                                 </div>
+                              </td>
+                              <td className="p-3">
+                                <select
+                                  value={item.rating || 5}
+                                  onChange={(e) => updateMultipleField(idx, 'rating', Number(e.target.value))}
+                                  className="w-full px-2 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold cursor-pointer font-sans animate-none"
+                                >
+                                  <option value={5}>5★</option>
+                                  <option value={4}>4★</option>
+                                  <option value={3}>3★</option>
+                                  <option value={2}>2★</option>
+                                  <option value={1}>1★</option>
+                                </select>
                               </td>
                               <td className="p-3">
                                 <textarea
@@ -1150,6 +1223,23 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                             className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                          Product Base Rating (Stars) *
+                        </label>
+                        <select
+                          value={posterRating}
+                          onChange={(e) => setPosterRating(Number(e.target.value))}
+                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-bold cursor-pointer font-sans"
+                        >
+                          <option value={5}>★★★★★ (5 Stars - Excellent)</option>
+                          <option value={4}>★★★★☆ (4 Stars - Good)</option>
+                          <option value={3}>★★★☆☆ (3 Stars - Average)</option>
+                          <option value={2}>★★☆☆☆ (2 Stars - Below Average)</option>
+                          <option value={1}>★☆☆☆☆ (1 Star - Poor)</option>
+                        </select>
                       </div>
 
                       {/* Dual Image Input Mode */}
@@ -1759,6 +1849,130 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
               </div>
             </motion.div>
           )}
+
+          {activeTab === 'reviews' && (
+            <motion.div
+              key="reviews"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-6 font-sans"
+            >
+              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md">
+                <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white">
+                  Customer Reviews & Ratings Directory ({reviews.length})
+                </h3>
+                <p className="text-zinc-400 text-xs mt-1 animate-none">
+                  Inspect and moderate reviews submitted by customers for your product inventory.
+                </p>
+              </div>
+
+              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold">
+                      <th className="pb-3">Product</th>
+                      <th className="pb-3">Customer Info</th>
+                      <th className="pb-3">Rating</th>
+                      <th className="pb-3">Comment</th>
+                      <th className="pb-3">Attachment</th>
+                      <th className="pb-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200/40 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">
+                    {reviews.map((rev) => {
+                      const posterItem = posters.find(p => String(p.id) === String(rev.productId));
+                      return (
+                        <tr key={rev.id} className="hover:bg-zinc-50/20 dark:hover:bg-zinc-850/10 transition-colors">
+                          <td className="py-4 font-semibold">
+                            <div className="flex items-center gap-3">
+                              {posterItem ? (
+                                <img
+                                  src={posterItem.image}
+                                  alt={posterItem.title}
+                                  className="w-8 h-10 object-cover rounded border border-zinc-200 dark:border-zinc-800 bg-white"
+                                />
+                              ) : (
+                                <div className="w-8 h-10 bg-zinc-200 dark:bg-zinc-800 rounded border border-zinc-350 dark:border-zinc-700 flex items-center justify-center text-[8px] font-bold">No Img</div>
+                              )}
+                              <div className="min-w-0">
+                                <div className="font-bold text-zinc-900 dark:text-white truncate max-w-[120px]">{posterItem ? posterItem.title : `ID: ${rev.productId}`}</div>
+                                <div className="text-[10px] text-zinc-450 dark:text-zinc-550 font-semibold">{posterItem?.category || 'Poster'}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 font-medium">
+                            <div className="font-bold text-zinc-800 dark:text-zinc-200">{rev.customerName}</div>
+                            <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold">{rev.customerEmail}</div>
+                          </td>
+                          <td className="py-4 font-bold">
+                            <div className="flex gap-0.5">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star
+                                  key={s}
+                                  className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-700'}`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-[9px] text-zinc-450 font-semibold block mt-0.5">{new Date(rev.date).toLocaleDateString()}</span>
+                          </td>
+                          <td className="py-4 max-w-[200px] truncate font-medium text-zinc-650 dark:text-zinc-400" title={rev.comment}>
+                            {rev.comment}
+                          </td>
+                          <td className="py-4 font-medium text-zinc-650 dark:text-zinc-350">
+                            {rev.image ? (
+                              <img
+                                src={rev.image}
+                                alt="Attachment"
+                                className="w-8 h-10 object-cover rounded border border-zinc-200 dark:border-zinc-800 bg-white cursor-pointer hover:opacity-85 transition-opacity"
+                                onClick={() => {
+                                  const win = window.open();
+                                  win.document.write(`<img src="${rev.image}" style="max-width:100%; max-height:100vh; display:block; margin:auto;" />`);
+                                }}
+                              />
+                            ) : (
+                              <span className="text-[10px] text-zinc-450 italic">None</span>
+                            )}
+                          </td>
+                          <td className="py-4 text-right">
+                            <div className="inline-flex gap-2">
+                              <button
+                                onClick={() => handleEditReviewClick(rev)}
+                                className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-600 text-blue-600 hover:text-white transition-colors"
+                                title="Edit Review"
+                                aria-label="Edit review"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 animate-none" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm("Are you sure you want to delete this review?")) {
+                                    await deleteReview(rev.id);
+                                    alert("Review deleted successfully!");
+                                  }
+                                }}
+                                className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-650 hover:text-white transition-colors"
+                                aria-label="Delete review"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {reviews.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-zinc-500 dark:text-zinc-500">
+                          No product reviews submitted yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
@@ -1826,7 +2040,11 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                         {selectedOrderDetails.status}
                       </span>
                     </p>
-                    <p><strong className="text-zinc-950 dark:text-white font-bold">Est. Delivery:</strong> {new Date(getEstimatedDeliveryDate(selectedOrderDetails.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    {selectedOrderDetails.status?.toLowerCase() === 'delivered' ? (
+                      <p><strong className="text-zinc-950 dark:text-white font-bold">Delivery Date:</strong> {new Date(selectedOrderDetails.deliveredDate || getEstimatedDeliveryDate(selectedOrderDetails.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    ) : (
+                      <p><strong className="text-zinc-950 dark:text-white font-bold">Est. Delivery:</strong> {new Date(getEstimatedDeliveryDate(selectedOrderDetails.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1893,6 +2111,132 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                   </span>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Review Editing Modal Overlay */}
+      <AnimatePresence>
+        {editingReviewId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setEditingReviewId(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-lg shadow-2xl p-6 sm:p-8 relative font-sans text-zinc-850 dark:text-zinc-100"
+            >
+              <button
+                onClick={() => setEditingReviewId(null)}
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5 animate-none" />
+              </button>
+
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500">
+                  <Star className="w-6 h-6 animate-none fill-blue-500" />
+                </div>
+                <div>
+                  <h3 className="font-outfit text-lg font-bold text-zinc-900 dark:text-white">
+                    Edit Customer Review
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Modify the rating and written review text.
+                  </p>
+                </div>
+              </div>
+
+              {(() => {
+                const originalReview = reviews.find(r => r.id === editingReviewId);
+                if (!originalReview) return null;
+                const posterItem = posters.find(p => String(p.id) === String(originalReview.productId));
+                return (
+                  <form onSubmit={(e) => handleEditReviewSubmit(e, originalReview)} className="space-y-5">
+                    <div className="flex items-center gap-3.5 p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-2xl border border-zinc-200/50 dark:border-zinc-850">
+                      {posterItem ? (
+                        <img
+                          src={posterItem.image}
+                          alt={posterItem.title}
+                          className="w-10 h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white"
+                        />
+                      ) : (
+                        <div className="w-10 h-14 bg-zinc-200 dark:bg-zinc-800 rounded border border-zinc-350 dark:border-zinc-700 flex items-center justify-center text-[8px] font-bold">No Img</div>
+                      )}
+                      <div className="min-w-0">
+                        <h4 className="font-outfit text-sm font-bold text-zinc-850 dark:text-white truncate">
+                          {posterItem ? posterItem.title : `Product ID: ${originalReview.productId}`}
+                        </h4>
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-555 font-semibold mt-0.5">
+                          By: {originalReview.customerName} ({originalReview.customerEmail})
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-2.5">
+                        Product Rating
+                      </span>
+                      <div className="flex gap-1.5 justify-start">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setEditReviewRating(star)}
+                            className="text-zinc-350 dark:text-zinc-700 hover:scale-105 transition-transform duration-150 focus:outline-none"
+                          >
+                            <Star
+                              className={`w-7 h-7 ${
+                                star <= editReviewRating
+                                  ? 'fill-amber-400 text-amber-400'
+                                  : 'text-zinc-350 dark:text-zinc-750'
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1.5">
+                        Review Details
+                      </label>
+                      <textarea
+                        rows={4}
+                        required
+                        value={editReviewComment}
+                        onChange={(e) => setEditReviewComment(e.target.value)}
+                        placeholder="Edit the customer comment details..."
+                        className="w-full px-4 py-3 rounded-2xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-850 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-zinc-400 font-sans font-medium"
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-3 border-t border-zinc-150 dark:border-zinc-800/80">
+                      <button
+                        type="button"
+                        onClick={() => setEditingReviewId(null)}
+                        className="flex-1 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-750 text-zinc-700 dark:text-zinc-200 font-bold text-xs transition-colors border border-zinc-200 dark:border-zinc-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </form>
+                );
+              })()}
             </motion.div>
           </motion.div>
         )}

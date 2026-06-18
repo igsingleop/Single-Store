@@ -140,6 +140,9 @@ export async function initDB() {
       ];
       localStorage.setItem(DB_COUPONS_KEY, JSON.stringify(defaultCoupons));
     }
+    if (!localStorage.getItem('SINGLESTORE_REVIEWS')) {
+      localStorage.setItem('SINGLESTORE_REVIEWS', JSON.stringify([]));
+    }
   }
 
   // Cart remains in LocalStorage always
@@ -314,9 +317,15 @@ export async function addOrder(order) {
 }
 
 export async function updateOrderStatus(orderId, newStatus) {
+  const isDelivered = newStatus.toLowerCase() === 'delivered';
+  const updateFields = { status: newStatus };
+  if (isDelivered) {
+    updateFields.deliveredDate = new Date().toISOString();
+  }
+
   if (isFirebaseConfigured && firestoreDb) {
     try {
-      await updateDoc(doc(firestoreDb, 'orders', String(orderId)), { status: newStatus });
+      await updateDoc(doc(firestoreDb, 'orders', String(orderId)), updateFields);
       window.dispatchEvent(new Event('singlestore_db_update'));
     } catch (e) {
       console.error("Firestore updateOrderStatus error:", e);
@@ -326,6 +335,9 @@ export async function updateOrderStatus(orderId, newStatus) {
     const index = orders.findIndex(o => String(o.id) === String(orderId));
     if (index > -1) {
       orders[index].status = newStatus;
+      if (isDelivered) {
+        orders[index].deliveredDate = updateFields.deliveredDate;
+      }
       localStorage.setItem(DB_ORDERS_KEY, JSON.stringify(orders));
       window.dispatchEvent(new Event('singlestore_db_update'));
     }
@@ -633,4 +645,78 @@ export function getEstimatedDeliveryDate(purchaseDateStr) {
     }
   }
   return date.toISOString();
+}
+
+// --- Review Operations ---
+export async function getReviews() {
+  let list = [];
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      const snapshot = await getDocs(collection(firestoreDb, 'reviews'));
+      snapshot.forEach(doc => {
+        list.push({ ...doc.data(), id: doc.id });
+      });
+    } catch (e) {
+      console.error("Firestore getReviews error:", e);
+      list = safeParse('SINGLESTORE_REVIEWS', []);
+    }
+  } else {
+    list = safeParse('SINGLESTORE_REVIEWS', []);
+  }
+  return list;
+}
+
+export async function addReview(review) {
+  const reviewId = review.id || (Date.now().toString() + Math.random().toString(36).substring(2, 6));
+  const finalReview = { ...review, id: reviewId };
+  
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      await setDoc(doc(firestoreDb, 'reviews', String(reviewId)), finalReview);
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    } catch (e) {
+      console.error("Firestore addReview error:", e);
+    }
+  } else {
+    const reviews = safeParse('SINGLESTORE_REVIEWS', []);
+    reviews.push(finalReview);
+    localStorage.setItem('SINGLESTORE_REVIEWS', JSON.stringify(reviews));
+    window.dispatchEvent(new Event('singlestore_db_update'));
+  }
+  return finalReview;
+}
+
+export async function deleteReview(id) {
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      await deleteDoc(doc(firestoreDb, 'reviews', String(id)));
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    } catch (e) {
+      console.error("Firestore deleteReview error:", e);
+    }
+  } else {
+    const reviews = safeParse('SINGLESTORE_REVIEWS', []);
+    const filteredReviews = reviews.filter(r => String(r.id) !== String(id));
+    localStorage.setItem('SINGLESTORE_REVIEWS', JSON.stringify(filteredReviews));
+    window.dispatchEvent(new Event('singlestore_db_update'));
+  }
+}
+
+export async function updateReview(updatedReview) {
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      await setDoc(doc(firestoreDb, 'reviews', String(updatedReview.id)), updatedReview, { merge: true });
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    } catch (e) {
+      console.error("Firestore updateReview error:", e);
+    }
+  } else {
+    const reviews = safeParse('SINGLESTORE_REVIEWS', []);
+    const index = reviews.findIndex(r => String(r.id) === String(updatedReview.id));
+    if (index > -1) {
+      reviews[index] = { ...reviews[index], ...updatedReview };
+      localStorage.setItem('SINGLESTORE_REVIEWS', JSON.stringify(reviews));
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    }
+  }
 }

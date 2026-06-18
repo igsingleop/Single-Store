@@ -12,12 +12,14 @@ import {
   Check, 
   Clock,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Star
 } from 'lucide-react';
-import { getOrders, getEstimatedDeliveryDate } from '../utils/db';
+import { getOrders, getEstimatedDeliveryDate, getReviews } from '../utils/db';
 import { getUserProfileDetails, updateUserProfileDetails } from '../utils/auth';
+import ReviewModal from './ReviewModal';
 
-export default function AccountView({ setView, user, onLogout }) {
+export default function AccountView({ setView, user, posters = [], onLogout }) {
   const [orders, setOrders] = useState([]);
   const [details, setDetails] = useState(null);
   const [activeTab, setActiveTab] = useState('profile');
@@ -25,6 +27,11 @@ export default function AccountView({ setView, user, onLogout }) {
   const [expandedOrders, setExpandedOrders] = useState({});
 
   const avatarInputRef = useRef(null);
+
+  const [reviews, setReviews] = useState([]);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [activeReviewOrderId, setActiveReviewOrderId] = useState(null);
+  const [activeReviewProduct, setActiveReviewProduct] = useState(null);
 
   const triggerAvatarUpload = () => {
     avatarInputRef.current?.click();
@@ -110,11 +117,22 @@ export default function AccountView({ setView, user, onLogout }) {
       }
     };
 
+    const fetchReviews = async () => {
+      try {
+        const data = await getReviews();
+        setReviews(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
     fetchProfileData();
     fetchOrders();
+    fetchReviews();
 
     const handleDbUpdate = () => {
       fetchOrders();
+      fetchReviews();
     };
 
     window.addEventListener('singlestore_db_update', handleDbUpdate);
@@ -313,6 +331,17 @@ export default function AccountView({ setView, user, onLogout }) {
             >
               <Package className="w-4 h-4" />
               <span>Order History</span>
+            </button>
+            <button
+              onClick={() => { setActiveTab('reviews'); setIsEditing(false); }}
+              className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                activeTab === 'reviews'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+              }`}
+            >
+              <Star className="w-4 h-4" />
+              <span>My Reviews</span>
             </button>
           </div>
 
@@ -722,7 +751,7 @@ export default function AccountView({ setView, user, onLogout }) {
                               
                               <button
                                 onClick={() => toggleOrderDetails(order.id)}
-                                className="px-4 py-2 bg-blue-50 dark:bg-blue-955/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-100 dark:border-blue-900/40 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+                                className="px-4 py-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-100 dark:border-blue-900/40 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
                               >
                                 <span>{isExpanded ? 'Hide Details' : 'View Details'}</span>
                                 {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -742,7 +771,7 @@ export default function AccountView({ setView, user, onLogout }) {
                               >
                                 <div className="pt-4 mt-4 border-t border-zinc-200/50 dark:border-zinc-800/80 space-y-4">
                                   {/* Info Badges & Delivery Estimate */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-100/30 dark:bg-zinc-955/20 p-4 rounded-xl border border-zinc-200/30 dark:border-zinc-800/50">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-100/30 dark:bg-zinc-900/20 p-4 rounded-xl border border-zinc-200/30 dark:border-zinc-800/50 font-sans">
                                     <div>
                                       <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Order Date</span>
                                       <div className="flex items-center gap-1 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 font-sans">
@@ -751,53 +780,94 @@ export default function AccountView({ setView, user, onLogout }) {
                                       </div>
                                     </div>
                                     <div>
-                                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Est. Delivery Date</span>
-                                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 font-sans">
-                                        <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                        <span>{new Date(getEstimatedDeliveryDate(order.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                      </div>
+                                      {order.status?.toLowerCase() === 'delivered' ? (
+                                        <>
+                                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Delivery Date</span>
+                                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-sans">
+                                            <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                            <span>{new Date(order.deliveredDate || getEstimatedDeliveryDate(order.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Est. Delivery Date</span>
+                                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 font-sans">
+                                            <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                            <span>{new Date(getEstimatedDeliveryDate(order.date)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                          </div>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
 
                                   {/* Order Items list */}
                                   <div className="space-y-3">
                                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Items & Quantities</span>
-                                    {order.items && order.items.map((item, itemIdx) => (
-                                      <div key={item.cartId || itemIdx} className="flex items-center gap-4 p-2 bg-zinc-50/50 dark:bg-zinc-900/20 rounded-xl border border-zinc-100 dark:border-zinc-800/60">
-                                        <img
-                                          src={item.image}
-                                          alt={item.title}
-                                          className="w-10 h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white"
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center justify-between gap-2">
-                                            <div>
-                                              <h4 className="font-outfit text-xs font-bold text-zinc-800 dark:text-white line-clamp-1">
-                                                {item.title}
-                                              </h4>
-                                              {(item.size || item.frame) && (
-                                                <span className="text-[9px] text-zinc-455 dark:text-zinc-500 font-semibold block mt-0.5">
-                                                  {item.size} • {item.frame}
+                                    {order.items && order.items.map((item, itemIdx) => {
+                                      const existingReview = reviews.find(
+                                        r => String(r.orderId) === String(order.id) && String(r.productId) === String(item.posterId || item.id)
+                                      );
+                                      return (
+                                        <div key={item.cartId || itemIdx} className="p-3 bg-zinc-50/50 dark:bg-zinc-900/20 rounded-xl border border-zinc-100 dark:border-zinc-800/60">
+                                          <div className="flex items-center gap-4">
+                                            <img
+                                              src={item.image}
+                                              alt={item.title}
+                                              className="w-10 h-14 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white"
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center justify-between gap-2">
+                                                <div>
+                                                  <h4 className="font-outfit text-xs font-bold text-zinc-800 dark:text-white line-clamp-1">
+                                                    {item.title}
+                                                  </h4>
+                                                  {(item.size || item.frame) && (
+                                                    <span className="text-[9px] text-zinc-455 dark:text-zinc-500 font-semibold block mt-0.5">
+                                                      {item.size} • {item.frame}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 whitespace-nowrap">
+                                                  Qty: {item.quantity || 1}
+                                                </span>
+                                              </div>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                              <span className="font-inter text-xs font-extrabold text-zinc-800 dark:text-zinc-200 block">
+                                                {formatPrice(parseFloat(item.price) * (item.quantity || 1))}
+                                              </span>
+                                              {(item.quantity || 1) > 1 && (
+                                                <span className="text-[8px] text-zinc-400 dark:text-zinc-500 block font-medium">
+                                                  {formatPrice(item.price)} each
                                                 </span>
                                               )}
                                             </div>
-                                            <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 whitespace-nowrap">
-                                              Qty: {item.quantity || 1}
-                                            </span>
                                           </div>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                          <span className="font-inter text-xs font-extrabold text-zinc-800 dark:text-zinc-200 block">
-                                            {formatPrice(parseFloat(item.price) * (item.quantity || 1))}
-                                          </span>
-                                          {(item.quantity || 1) > 1 && (
-                                            <span className="text-[8px] text-zinc-400 dark:text-zinc-500 block font-medium">
-                                              {formatPrice(item.price)} each
-                                            </span>
+
+                                          {order.status?.toLowerCase() === 'delivered' && (
+                                            <div className="mt-3.5 pt-2.5 border-t border-zinc-100/70 dark:border-zinc-800/40 flex justify-end">
+                                              {existingReview ? (
+                                                <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-900/30 text-[10px] font-bold flex items-center gap-1 leading-none">
+                                                  <Check className="w-3 h-3 text-emerald-500" />
+                                                  <span>Reviewed (★ {existingReview.rating})</span>
+                                                </span>
+                                              ) : (
+                                                <button
+                                                  onClick={() => {
+                                                    setActiveReviewOrderId(order.id);
+                                                    setActiveReviewProduct(item);
+                                                    setReviewModalOpen(true);
+                                                  }}
+                                                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-bold shadow-sm hover:shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                                                >
+                                                  <span>Write Review</span>
+                                                </button>
+                                              )}
+                                            </div>
                                           )}
                                         </div>
-                                      </div>
-                                    ))}
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               </motion.div>
@@ -811,10 +881,104 @@ export default function AccountView({ setView, user, onLogout }) {
               </motion.div>
             )}
 
+            {activeTab === 'reviews' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-6"
+              >
+                {/* Header */}
+                <div className="pb-4 border-b border-zinc-100 dark:border-zinc-800">
+                  <h3 className="font-outfit text-xl font-extrabold text-zinc-950 dark:text-white flex items-center gap-2">
+                    <Star className="w-5 h-5 text-blue-600 dark:text-blue-400 fill-blue-600" />
+                    <span>My Ratings & Reviews ({reviews.filter(r => r.customerEmail?.toLowerCase() === user.email.toLowerCase()).length})</span>
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Review your previous product feedback and ratings
+                  </p>
+                </div>
+
+                {reviews.filter(r => r.customerEmail?.toLowerCase() === user.email.toLowerCase()).length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="text-5xl mb-4">✍️</div>
+                    <h4 className="font-bold text-zinc-700 dark:text-white">No reviews yet</h4>
+                    <p className="text-xs text-zinc-500 mt-1">Submit feedback on your orders in the Order History tab once they are delivered.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
+                    {reviews.filter(r => r.customerEmail?.toLowerCase() === user.email.toLowerCase()).map((rev) => {
+                      const posterItem = posters.find(p => String(p.id) === String(rev.productId));
+                      return (
+                        <div key={rev.id} className="p-5 bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl border border-zinc-200/50 dark:border-zinc-800 shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-start">
+                          <div className="flex gap-4 items-start flex-1 w-full">
+                            {posterItem && (
+                              <img
+                                src={posterItem.image}
+                                alt={posterItem.title}
+                                className="w-12 h-16 object-cover rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white shrink-0"
+                              />
+                            )}
+                            <div className="space-y-1 flex-1 min-w-0">
+                              <h4 className="font-outfit text-sm font-bold text-zinc-800 dark:text-white truncate">
+                                {posterItem ? posterItem.title : `Product ID: ${rev.productId}`}
+                              </h4>
+                              <div className="flex items-center gap-2">
+                                <div className="flex gap-0.5">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star 
+                                      key={s} 
+                                      className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-750'}`} 
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-semibold">
+                                  {new Date(rev.date).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-xs text-zinc-650 dark:text-zinc-350 leading-relaxed font-sans font-medium whitespace-pre-line">
+                                {rev.comment}
+                              </p>
+                              {rev.image && (
+                                <div className="pt-2">
+                                  <img 
+                                    src={rev.image} 
+                                    alt="Feedback upload" 
+                                    className="w-12 h-16 object-cover rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
           </div>
         </motion.div>
 
       </div>
+      
+      {/* Review Submission Modal Overlay */}
+      <ReviewModal
+        isOpen={reviewModalOpen}
+        onClose={() => {
+          setReviewModalOpen(false);
+          setActiveReviewOrderId(null);
+          setActiveReviewProduct(null);
+        }}
+        orderId={activeReviewOrderId}
+        product={activeReviewProduct}
+        customerName={user.displayName || details?.name}
+        customerEmail={user.email}
+        onReviewSubmitted={async () => {
+          const data = await getReviews();
+          setReviews(data);
+        }}
+      />
     </div>
   );
 }

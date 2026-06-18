@@ -70,7 +70,16 @@ export default function Navbar({
         >
           Shop All
         </button>
-
+        <button
+          onClick={() => setView('faq')}
+          className={`font-medium transition-colors ${
+            currentView === 'faq'
+              ? 'text-blue-600 dark:text-blue-400'
+              : 'text-zinc-600 dark:text-zinc-300 hover:text-blue-500'
+          }`}
+        >
+          FAQs
+        </button>
       </div>
 
       {/* Search Input - Desktop */}
@@ -209,6 +218,14 @@ export default function Navbar({
               }`}
             >
               Shop All
+            </button>
+            <button
+              onClick={() => { setView('faq'); setIsMobileMenuOpen(false); }}
+              className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 ${
+                currentView === 'faq' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-300'
+              }`}
+            >
+              FAQs
             </button>
             <button
               onClick={() => { setView(currentView === 'wishlist' ? 'home' : 'wishlist'); setIsMobileMenuOpen(false); }}

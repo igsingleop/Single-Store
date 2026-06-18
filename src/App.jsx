@@ -26,9 +26,11 @@ const CheckoutView = lazy(() => import('./components/CheckoutView'));
 const LoginView = lazy(() => import('./components/LoginView'));
 const AdminPanel = lazy(() => import('./components/admin/AdminPanel'));
 const AccountView = lazy(() => import('./components/AccountView'));
+const HelpFaqView = lazy(() => import('./components/HelpFaqView'));
 
 export default function App() {
   const [currentView, setView] = useState('home');
+  const [faqCategory, setFaqCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPosterId, setSelectedPosterId] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -486,12 +488,19 @@ export default function App() {
               <AccountView
                 setView={setView}
                 user={user}
+                posters={posters}
                 onLogout={async () => {
                   await logout();
                   setUser(null);
                   setView('home');
                 }}
               />
+            </Suspense>
+          )}
+
+          {currentView === 'faq' && (
+            <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center text-xs font-semibold text-zinc-500">Loading Help Center...</div>}>
+              <HelpFaqView setView={setView} initialCategory={faqCategory} />
             </Suspense>
           )}
         </m.div>
@@ -631,9 +640,36 @@ export default function App() {
               Store Support
             </h4>
             <ul className="text-xs space-y-2 text-zinc-500 dark:text-zinc-400">
-              <li className="hover:text-blue-600 cursor-pointer">Help & FAQs</li>
-              <li className="hover:text-blue-600 cursor-pointer">Shipping & Packaging</li>
-              <li className="hover:text-blue-600 cursor-pointer">Razorpay Security Policy</li>
+              <li 
+                onClick={() => {
+                  setFaqCategory('all');
+                  setView('faq');
+                  window.scrollTo(0, 0);
+                }} 
+                className="hover:text-blue-600 cursor-pointer"
+              >
+                Help & FAQs
+              </li>
+              <li 
+                onClick={() => {
+                  setFaqCategory('shipping');
+                  setView('faq');
+                  window.scrollTo(0, 0);
+                }} 
+                className="hover:text-blue-600 cursor-pointer"
+              >
+                Shipping & Packaging
+              </li>
+              <li 
+                onClick={() => {
+                  setFaqCategory('payments');
+                  setView('faq');
+                  window.scrollTo(0, 0);
+                }} 
+                className="hover:text-blue-600 cursor-pointer"
+              >
+                Razorpay Security Policy
+              </li>
             </ul>
           </div>
 

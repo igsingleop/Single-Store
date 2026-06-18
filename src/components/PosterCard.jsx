@@ -1,7 +1,33 @@
 import { motion } from 'framer-motion';
-import { ShoppingCart, Heart } from 'lucide-react';
+import { ShoppingCart, Heart, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { getReviews } from '../utils/db';
 
 export default function PosterCard({ poster, onSelect, onAddToCart, isWishlisted = false, onToggleWishlist }) {
+  const [ratingInfo, setRatingInfo] = useState({ avg: 0, count: 0 });
+
+  useEffect(() => {
+    const fetchRating = async () => {
+      try {
+        const allReviews = await getReviews();
+        const posterReviews = allReviews.filter(r => String(r.productId) === String(poster.id));
+        if (posterReviews.length > 0) {
+          const avg = posterReviews.reduce((sum, r) => sum + r.rating, 0) / posterReviews.length;
+          setRatingInfo({ avg, count: posterReviews.length });
+        } else {
+          setRatingInfo({ avg: poster.rating !== undefined ? Number(poster.rating) : 5, count: 0 });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchRating();
+
+    window.addEventListener('singlestore_db_update', fetchRating);
+    return () => {
+      window.removeEventListener('singlestore_db_update', fetchRating);
+    };
+  }, [poster.id, poster.rating]);
   const hasDiscount = poster.discountPrice != null && String(poster.discountPrice) !== '' && !isNaN(parseFloat(poster.discountPrice));
   const activePrice = hasDiscount ? parseFloat(poster.discountPrice) : parseFloat(poster.price);
   const comparePrice = hasDiscount ? parseFloat(poster.price) : null;
@@ -59,6 +85,29 @@ export default function PosterCard({ poster, onSelect, onAddToCart, isWishlisted
           <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mt-0.5 line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {poster.title}
           </h3>
+          
+          {/* Ratings Stars */}
+          <div className="flex items-center gap-1 mt-1.5">
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star
+                  key={s}
+                  className={`w-3 h-3 ${
+                    ratingInfo.avg >= s
+                      ? 'fill-amber-400 text-amber-400'
+                      : ratingInfo.avg > s - 1
+                      ? 'fill-amber-400 text-amber-400 opacity-50'
+                      : 'text-zinc-300 dark:text-zinc-700'
+                  }`}
+                />
+              ))}
+            </div>
+            {ratingInfo.count > 0 && (
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-450 font-bold font-sans">
+                ({ratingInfo.count})
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
