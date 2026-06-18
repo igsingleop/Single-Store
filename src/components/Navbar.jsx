@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, Moon, ShoppingBag, Search, Menu, X, Heart, User } from 'lucide-react';
 
@@ -15,9 +15,26 @@ export default function Navbar({
   user = null
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 15) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Check initial scroll position
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <nav className="sticky top-0 z-40 w-full glass-panel border-b px-4 py-3 md:px-6 md:py-4 flex items-center justify-between shadow-sm">
+    <nav className={`sticky top-0 z-40 w-full glass-header flex items-center justify-between shadow-sm px-4 md:px-6 ${
+      isScrolled ? 'py-2 md:py-2.5 scrolled' : 'py-3.5 md:py-4.5'
+    }`}>
       {/* Brand Logo */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
@@ -175,7 +192,7 @@ export default function Navbar({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute top-[73px] left-0 w-full glass-panel border-b p-6 flex flex-col space-y-4 md:hidden shadow-lg"
+            className="absolute top-full left-0 w-full glass-panel border-b p-6 flex flex-col space-y-4 md:hidden shadow-lg"
           >
             <button
               onClick={() => { setView('home'); setIsMobileMenuOpen(false); }}
