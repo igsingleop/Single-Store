@@ -240,7 +240,7 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
                     {[1, 2, 3, 4, 5].map((s) => (
                       <Star 
                         key={s} 
-                        className={`w-4 h-4 ${s <= Math.round(parseFloat(avgRating)) ? 'fill-amber-400 text-amber-400' : 'text-zinc-250 dark:text-zinc-700'}`} 
+                        className={`w-4 h-4 ${s <= Math.round(parseFloat(avgRating)) ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-600'}`} 
                       />
                     ))}
                   </div>
@@ -318,7 +318,7 @@ export default function ProductDetailModal({ posterId, posters, onClose, onAddTo
                           {[1, 2, 3, 4, 5].map((s) => (
                             <Star 
                               key={s} 
-                              className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-700'}`} 
+                              className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-600'}`} 
                             />
                           ))}
                         </div>

@@ -296,24 +296,24 @@ export default function App() {
 
   if (currentView === 'admin' && adminSession) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-100 to-blue-100/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-indigo-950/20 text-zinc-800 dark:text-zinc-100 flex flex-col font-sans transition-colors duration-300">
+      <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 flex flex-col font-sans transition-colors duration-200">
         {/* Admin Header */}
-        <header className="sticky top-0 z-40 w-full glass-panel border-b px-6 py-4 flex items-center justify-between shadow-sm">
-          <div className="flex items-center space-x-2.5">
-            <ShieldAlert className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <span className="font-outfit text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+        <header className="sticky top-0 z-40 w-full glass-panel border-b px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between shadow-sm gap-2">
+          <div className="flex items-center space-x-2">
+            <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span className="font-outfit text-sm sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent truncate">
               Single Store Admin.
             </span>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
             {/* Theme switcher */}
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all"
+              className="p-2 sm:p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in transition-all"
               aria-label="Toggle theme"
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
+              {theme === 'dark' ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />}
             </button>
 
             {/* Back to Store button */}
@@ -321,9 +321,9 @@ export default function App() {
               onClick={() => {
                 setView('home');
               }}
-              className="text-xs font-bold bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 px-4 py-2.5 rounded-xl hover:shadow-neo-in shadow-neo-out flex items-center space-x-1.5 transition-all"
+              className="text-[10px] sm:text-xs font-bold bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl hover:shadow-neo-in shadow-neo-out flex items-center space-x-1 sm:space-x-1.5 transition-all"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <ArrowLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               <span>Back to Store</span>
             </button>
           </div>
@@ -345,7 +345,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-100 to-blue-100/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-indigo-950/20 text-zinc-800 dark:text-zinc-100 flex flex-col font-sans transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 flex flex-col font-sans transition-colors duration-200">
 
       {/* Announcement Marquee Bar */}
       <div className="w-full bg-blue-600 dark:bg-blue-900 text-white py-2 text-xs font-semibold overflow-hidden relative select-none">

@@ -927,7 +927,7 @@ export default function AccountView({ setView, user, posters = [], onLogout }) {
                                   {[1, 2, 3, 4, 5].map((s) => (
                                     <Star 
                                       key={s} 
-                                      className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-750'}`} 
+                                      className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-600'}`} 
                                     />
                                   ))}
                                 </div>

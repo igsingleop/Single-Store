@@ -139,7 +139,7 @@ export default function ReviewModal({ isOpen, onClose, orderId, product, custome
                     onClick={() => setRating(star)}
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
-                    className="p-1 text-zinc-300 dark:text-zinc-700 transition-colors duration-200 focus:outline-none"
+                    className="p-1 text-zinc-300 dark:text-zinc-600 transition-colors duration-200 focus:outline-none"
                   >
                     <Star
                       className={`w-8 h-8 transition-all duration-200 ${

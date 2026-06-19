@@ -97,7 +97,7 @@ export default function PosterCard({ poster, onSelect, onAddToCart, isWishlisted
                       ? 'fill-amber-400 text-amber-400'
                       : ratingInfo.avg > s - 1
                       ? 'fill-amber-400 text-amber-400 opacity-50'
-                      : 'text-zinc-300 dark:text-zinc-700'
+                      : 'text-zinc-300 dark:text-zinc-600'
                   }`}
                 />
               ))}

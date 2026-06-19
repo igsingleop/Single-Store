@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp,
@@ -17,9 +17,7 @@ import {
   Users,
   Search,
   FileSpreadsheet,
-  Eye,
   X,
-  ChevronRight,
   Star
 } from 'lucide-react';
 import {
@@ -81,6 +79,11 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const [customerSortBy, setCustomerSortBy] = useState('spent'); // 'spent', 'orders', 'name', 'recent'
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [syncingCustomers, setSyncingCustomers] = useState(false);
+
+  // Catalog inventory search, filter, and sort states
+  const [posterSearchQuery, setPosterSearchQuery] = useState('');
+  const [posterCategoryFilter, setPosterCategoryFilter] = useState('All');
+  const [posterSortBy, setPosterSortBy] = useState('name-asc'); // 'name-asc', 'name-desc', 'price-asc', 'price-desc'
 
   // Review editing states
   const [editingReviewId, setEditingReviewId] = useState(null);
@@ -175,6 +178,55 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   }, {});
 
   const totalCategoryRevenue = Object.values(categorySales).reduce((a, b) => a + b, 0) || 1;
+
+  // Extract all categories dynamically from posters
+  const uniqueCategories = useMemo(() => {
+    const cats = posters.map(p => p.category);
+    return ['All', ...new Set(cats.filter(Boolean))];
+  }, [posters]);
+
+  // Filter and sort posters
+  const filteredPosters = useMemo(() => {
+    let result = [...posters];
+
+    // Filter by category
+    if (posterCategoryFilter !== 'All') {
+      result = result.filter(p => p.category === posterCategoryFilter);
+    }
+
+    // Filter by search query
+    if (posterSearchQuery.trim() !== '') {
+      const query = posterSearchQuery.toLowerCase();
+      result = result.filter(p => 
+        p.title.toLowerCase().includes(query) ||
+        (p.category && p.category.toLowerCase().includes(query)) ||
+        (p.description && p.description.toLowerCase().includes(query))
+      );
+    }
+
+    // Sort posters
+    result.sort((a, b) => {
+      if (posterSortBy === 'name-asc') {
+        return a.title.localeCompare(b.title);
+      }
+      if (posterSortBy === 'name-desc') {
+        return b.title.localeCompare(a.title);
+      }
+      if (posterSortBy === 'price-asc') {
+        const priceA = parseFloat(a.discountPrice || a.price) || 0;
+        const priceB = parseFloat(b.discountPrice || b.price) || 0;
+        return priceA - priceB;
+      }
+      if (posterSortBy === 'price-desc') {
+        const priceA = parseFloat(a.discountPrice || a.price) || 0;
+        const priceB = parseFloat(b.discountPrice || b.price) || 0;
+        return priceB - priceA;
+      }
+      return 0;
+    });
+
+    return result;
+  }, [posters, posterCategoryFilter, posterSearchQuery, posterSortBy]);
 
   // --- HANDLERS ---
   // Client-side image compression using canvas
@@ -675,7 +727,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   });
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-12 flex flex-col lg:flex-row gap-6 md:gap-8">
+    <div className="w-full max-w-[1600px] mx-auto px-4 py-6 md:px-6 md:py-12 flex flex-col lg:flex-row gap-6 md:gap-8">
       {/* Sidebar Navigation */}
       <div className="w-full lg:w-64 shrink-0 flex flex-row lg:flex-col gap-2 p-2 sm:p-3 glass-panel border border-zinc-200/50 dark:border-zinc-800 rounded-2xl lg:rounded-3xl h-fit lg:min-h-[500px] overflow-x-auto scrollbar-none flex-nowrap lg:flex-wrap lg:overflow-visible">
         
@@ -791,7 +843,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
               className="space-y-8"
             >
               {/* Stats Cards (Neomorphic) */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md flex items-center space-x-4">
                   <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500">
                     <DollarSign className="w-6 h-6" />
@@ -830,9 +882,9 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
               </div>
 
               {/* Lower Section: Charts + Recent Orders */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 {/* Category breakdown (Visual progress bars) */}
-                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md lg:col-span-1">
+                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md xl:col-span-1">
                   <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
                     Sales by Category
                   </h3>
@@ -864,11 +916,12 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                 </div>
 
                 {/* Recent Orders table */}
-                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md lg:col-span-2 overflow-x-auto font-sans">
+                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md xl:col-span-2 font-sans w-full min-w-0">
                   <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
                     Recent Store Orders
                   </h3>
-                  <table className="w-full text-left text-xs border-collapse">
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full text-left text-xs border-collapse min-w-[500px]">
                     <thead>
                       <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold">
                         <th className="pb-3">Order ID</th>
@@ -903,8 +956,9 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                   </table>
                 </div>
               </div>
-            </motion.div>
-          )}
+            </div>
+          </motion.div>
+        )}
 
           {activeTab === 'inventory' && (
             <motion.div
@@ -912,10 +966,10 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start"
+              className="grid grid-cols-1 2xl:grid-cols-3 gap-8 items-start"
             >
               {/* Left Column (Create/Edit Form + Bulk Actions) */}
-              <div className={`space-y-6 ${addMode === 'multiple' && !editingId ? 'xl:col-span-3' : 'xl:col-span-1'}`}>
+              <div className={`space-y-6 ${addMode === 'multiple' && !editingId ? '2xl:col-span-3' : '2xl:col-span-1'}`}>
                 {/* Create/Edit Form */}
                 {addMode === 'multiple' && !editingId ? (
                   <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md">
@@ -964,9 +1018,9 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                     </div>
 
                     {/* Table Container */}
-                    <div className="overflow-x-auto border border-zinc-200/50 dark:border-zinc-800/50 rounded-2xl mb-6">
+                    <div className="overflow-x-auto w-full max-h-[500px] overflow-y-auto border border-zinc-200/50 dark:border-zinc-800/50 rounded-2xl mb-6">
                       <table className="w-full text-left text-xs border-collapse min-w-[800px]">
-                        <thead>
+                        <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-900 z-10 shadow-sm">
                           <tr className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-850 text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[9px]">
                             <th className="p-3 w-12 text-center">#</th>
                             <th className="p-3 w-52">Image Source</th>
@@ -1195,7 +1249,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
                             Regular Price (₹) *
@@ -1244,11 +1298,11 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
 
                       {/* Dual Image Input Mode */}
                       <div>
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
                             Poster Image *
                           </label>
-                          <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 text-[9px] font-bold">
+                          <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 text-[9px] font-bold w-fit self-start sm:self-auto">
                             <button
                               type="button"
                               onClick={() => { setImageInputMode('file'); }}
@@ -1412,12 +1466,59 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
               </div>
 
               {/* Right Column: Posters List Table */}
-              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md xl:col-span-2 overflow-x-auto h-fit">
-                <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
-                  Catalog Inventory ({posters.length})
-                </h3>
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
+              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md 2xl:col-span-2 h-fit w-full min-w-0">
+                {/* Search, Filter & Sort Row */}
+                <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between mb-6 flex-wrap">
+                  <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white shrink-0">
+                    Catalog Inventory ({filteredPosters.length})
+                  </h3>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto flex-wrap">
+                    {/* Search input */}
+                    <div className="relative flex-1 sm:flex-initial sm:w-48 lg:w-52">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                      <input
+                        type="text"
+                        placeholder="Search inventory..."
+                        value={posterSearchQuery}
+                        onChange={(e) => setPosterSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-855 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-medium"
+                      />
+                    </div>
+
+                    {/* Category Filter Dropdown */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest whitespace-nowrap">Category:</span>
+                      <select
+                        value={posterCategoryFilter}
+                        onChange={(e) => setPosterCategoryFilter(e.target.value)}
+                        className="flex-1 sm:w-auto px-3 py-2.5 rounded-2xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-850 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer font-bold transition-all"
+                      >
+                        {uniqueCategories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Sort Dropdown */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest whitespace-nowrap">Sort:</span>
+                      <select
+                        value={posterSortBy}
+                        onChange={(e) => setPosterSortBy(e.target.value)}
+                        className="flex-1 sm:w-auto px-3 py-2.5 rounded-2xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-855 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer font-bold transition-all"
+                      >
+                        <option value="name-asc">Title A-Z</option>
+                        <option value="name-desc">Title Z-A</option>
+                        <option value="price-asc">Price: Low-High</option>
+                        <option value="price-desc">Price: High-Low</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto w-full max-h-[600px] overflow-y-auto border border-zinc-150/10 dark:border-zinc-850/10 rounded-2xl">
+                  <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+                  <thead className="sticky top-0 bg-slate-50/95 dark:bg-zinc-900/95 backdrop-blur-sm z-10 shadow-sm">
                     <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold">
                       <th className="pb-3 w-16">Preview</th>
                       <th className="pb-3">Title</th>
@@ -1427,13 +1528,13 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200/40 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">
-                    {posters.map((p) => (
+                    {filteredPosters.map((p) => (
                       <tr key={p.id} className="group">
                         <td className="py-3">
                           <img
                             src={p.image}
                             alt={p.title}
-                            className="w-10 h-14 object-cover rounded-md border border-zinc-200 dark:border-zinc-800 bg-white"
+                            className="w-10 h-14 object-cover rounded-md border border-zinc-200/50 dark:border-zinc-800 bg-white shadow-sm"
                             onError={(e) => { e.target.src = 'https://via.placeholder.com/400x600?text=No+Image'; }}
                           />
                         </td>
@@ -1469,17 +1570,21 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                         </td>
                       </tr>
                     ))}
-                    {posters.length === 0 && (
+                    {filteredPosters.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-6 text-center text-zinc-500 dark:text-zinc-500">
-                          Your catalog has no posters. Add some!
+                        <td colSpan={5} className="py-6 text-center text-zinc-500 dark:text-zinc-500 font-medium">
+                          {posters.length === 0 
+                            ? "Your catalog has no posters. Add some!"
+                            : "No posters found matching your search or category."
+                          }
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               </div>
-            </motion.div>
+            </div>
+          </motion.div>
           )}
 
           {activeTab === 'orders' && (
@@ -1488,13 +1593,14 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md overflow-x-auto"
+              className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md w-full min-w-0"
             >
               <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
                 Customer Transactions Log ({orders.length})
               </h3>
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
+              <div className="overflow-x-auto w-full max-h-[600px] overflow-y-auto border border-zinc-150/10 dark:border-zinc-850/10 rounded-2xl">
+                <table className="w-full text-left text-xs border-collapse min-w-[800px]">
+                <thead className="sticky top-0 bg-slate-50/95 dark:bg-zinc-900/95 backdrop-blur-sm z-10 shadow-sm">
                   <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold">
                     <th className="pb-3">Order ID</th>
                     <th className="pb-3">Client Email</th>
@@ -1561,7 +1667,8 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                   )}
                 </tbody>
               </table>
-            </motion.div>
+            </div>
+          </motion.div>
           )}
 
           {activeTab === 'customers' && (
@@ -1626,9 +1733,10 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
               )}
 
               {/* Desktop and Tablet Table view */}
-              <div className="hidden md:block glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
+              <div className="hidden md:block glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md w-full min-w-0">
+                <div className="overflow-x-auto w-full max-h-[600px] overflow-y-auto border border-zinc-150/10 dark:border-zinc-850/10 rounded-2xl">
+                  <table className="w-full text-left text-xs border-collapse min-w-[800px]">
+                  <thead className="sticky top-0 bg-slate-50/95 dark:bg-zinc-900/95 backdrop-blur-sm z-10 shadow-sm">
                     <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold">
                       <th className="pb-3">Customer Info</th>
                       <th className="pb-3">Contact</th>
@@ -1673,6 +1781,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                   </tbody>
                 </table>
               </div>
+            </div>
 
               {/* Mobile Cards view */}
               <div className="block md:hidden space-y-4">
@@ -1723,10 +1832,10 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start font-sans"
+              className="grid grid-cols-1 2xl:grid-cols-3 gap-8 items-start font-sans"
             >
               {/* Left Column: Create Coupon Form */}
-              <div className="space-y-6 xl:col-span-1">
+              <div className="space-y-6 2xl:col-span-1">
                 <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md h-fit">
                   <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
                     Add New Coupon
@@ -1801,12 +1910,13 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
               </div>
 
               {/* Right Column: Coupons List */}
-              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md xl:col-span-2 overflow-x-auto h-fit">
+              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md 2xl:col-span-2 h-fit w-full min-w-0">
                 <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
                   Active Store Coupons ({coupons.length})
                 </h3>
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
+                <div className="overflow-x-auto w-full max-h-[400px] overflow-y-auto border border-zinc-150/10 dark:border-zinc-850/10 rounded-2xl">
+                  <table className="w-full text-left text-xs border-collapse min-w-[500px]">
+                  <thead className="sticky top-0 bg-slate-50/95 dark:bg-zinc-900/95 backdrop-blur-sm z-10 shadow-sm">
                     <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold">
                       <th className="pb-3">Code</th>
                       <th className="pb-3">Type</th>
@@ -1847,6 +1957,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                   </tbody>
                 </table>
               </div>
+            </div>
             </motion.div>
           )}
 
@@ -1867,9 +1978,10 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                 </p>
               </div>
 
-              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
+              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md w-full min-w-0">
+                <div className="overflow-x-auto w-full max-h-[600px] overflow-y-auto border border-zinc-150/10 dark:border-zinc-850/10 rounded-2xl">
+                  <table className="w-full text-left text-xs border-collapse min-w-[800px]">
+                  <thead className="sticky top-0 bg-slate-50/95 dark:bg-zinc-900/95 backdrop-blur-sm z-10 shadow-sm">
                     <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 font-bold">
                       <th className="pb-3">Product</th>
                       <th className="pb-3">Customer Info</th>
@@ -1910,7 +2022,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                               {[1, 2, 3, 4, 5].map((s) => (
                                 <Star
                                   key={s}
-                                  className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-700'}`}
+                                  className={`w-3.5 h-3.5 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-300 dark:text-zinc-600'}`}
                                 />
                               ))}
                             </div>
@@ -1971,6 +2083,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                   </tbody>
                 </table>
               </div>
+            </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -2191,13 +2304,13 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                             key={star}
                             type="button"
                             onClick={() => setEditReviewRating(star)}
-                            className="text-zinc-350 dark:text-zinc-700 hover:scale-105 transition-transform duration-150 focus:outline-none"
+                            className="text-zinc-300 dark:text-zinc-600 hover:scale-105 transition-transform duration-150 focus:outline-none"
                           >
                             <Star
                               className={`w-7 h-7 ${
                                 star <= editReviewRating
                                   ? 'fill-amber-400 text-amber-400'
-                                  : 'text-zinc-350 dark:text-zinc-750'
+                                  : 'text-zinc-300 dark:text-zinc-600'
                               }`}
                             />
                           </button>
