@@ -4,6 +4,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global Cursor Configuration */
+*, *::before, *::after {
+  cursor: default;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+textarea,
+[contenteditable="true"] {
+  cursor: text;
+}
+
+a, 
+button, 
+select,
+[role="button"],
+input[type="submit"],
+input[type="button"],
+input[type="checkbox"],
+input[type="radio"],
+label,
+.cursor-pointer {
+  cursor: pointer;
+}
+
 :root {
   --neo-shadow-out: 6px 6px 16px rgba(163, 177, 198, 0.45), -6px -6px 16px rgba(255, 255, 255, 0.9);
   --neo-shadow-in: inset 4px 4px 8px rgba(163, 177, 198, 0.45), inset -4px -4px 8px rgba(255, 255, 255, 0.9);
