@@ -741,36 +741,41 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
 
     const imgUrl = bannerImage || 'https://via.placeholder.com/1200x500?text=No+Image';
 
-    if (editingBannerId) {
-      // Edit
-      const updated = {
-        id: editingBannerId,
-        title: bannerTitle,
-        subtitle: bannerSubtitle,
-        image: imgUrl,
-        link: bannerLink
-      };
-      await updateBanner(updated);
-      alert("Banner updated successfully!");
-      setEditingBannerId(null);
-    } else {
-      // Add
-      const newBanner = {
-        id: Date.now().toString(),
-        title: bannerTitle,
-        subtitle: bannerSubtitle,
-        image: imgUrl,
-        link: bannerLink
-      };
-      await addBanner(newBanner);
-      alert("Banner added successfully!");
-    }
+    try {
+      if (editingBannerId) {
+        // Edit
+        const updated = {
+          id: editingBannerId,
+          title: bannerTitle,
+          subtitle: bannerSubtitle,
+          image: imgUrl,
+          link: bannerLink
+        };
+        await updateBanner(updated);
+        alert("Banner updated successfully!");
+        setEditingBannerId(null);
+      } else {
+        // Add
+        const newBanner = {
+          id: Date.now().toString(),
+          title: bannerTitle,
+          subtitle: bannerSubtitle,
+          image: imgUrl,
+          link: bannerLink
+        };
+        await addBanner(newBanner);
+        alert("Banner added successfully!");
+      }
 
-    // Reset Form
-    setBannerTitle('');
-    setBannerSubtitle('');
-    setBannerImage('');
-    setBannerLink('shop');
+      // Reset Form
+      setBannerTitle('');
+      setBannerSubtitle('');
+      setBannerImage('');
+      setBannerLink('shop');
+    } catch (err) {
+      console.error("Failed to save banner:", err);
+      alert("Failed to save banner: " + (err.message || err));
+    }
   };
 
   const handleEditBannerClick = (b) => {
@@ -785,7 +790,13 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
 
   const handleDeleteBannerClick = async (id) => {
     if (window.confirm("Are you sure you want to delete this banner?")) {
-      await deleteBanner(id);
+      try {
+        await deleteBanner(id);
+        alert("Banner deleted successfully!");
+      } catch (err) {
+        console.error("Failed to delete banner:", err);
+        alert("Failed to delete banner: " + (err.message || err));
+      }
     }
   };
 

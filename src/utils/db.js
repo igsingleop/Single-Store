@@ -788,6 +788,7 @@ export async function addBanner(banner) {
       window.dispatchEvent(new Event('singlestore_db_update'));
     } catch (e) {
       console.error("Firestore addBanner error:", e);
+      throw e;
     }
   } else {
     const banners = safeParse(DB_BANNERS_KEY, defaultBanners);
@@ -804,6 +805,7 @@ export async function updateBanner(updatedBanner) {
       window.dispatchEvent(new Event('singlestore_db_update'));
     } catch (e) {
       console.error("Firestore updateBanner error:", e);
+      throw e;
     }
   } else {
     const banners = safeParse(DB_BANNERS_KEY, defaultBanners);
@@ -823,6 +825,7 @@ export async function deleteBanner(id) {
       window.dispatchEvent(new Event('singlestore_db_update'));
     } catch (e) {
       console.error("Firestore deleteBanner error:", e);
+      throw e;
     }
   } else {
     let banners = safeParse(DB_BANNERS_KEY, defaultBanners);
