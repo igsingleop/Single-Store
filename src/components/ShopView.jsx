@@ -2,8 +2,19 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PosterCard from './PosterCard';
 
-export default function ShopView({ posters, searchQuery, onSelectPoster, onAddToCart, wishlist = [], onToggleWishlist }) {
-  const [selectedCategory, setSelectedCategory] = useState('All');
+export default function ShopView({
+  posters,
+  searchQuery,
+  onSelectPoster,
+  onAddToCart,
+  wishlist = [],
+  onToggleWishlist,
+  selectedCategory,
+  setSelectedCategory
+}) {
+  const [internalCategory, setInternalCategory] = useState('All');
+  const activeCategory = setSelectedCategory ? selectedCategory : internalCategory;
+  const setActiveCategory = setSelectedCategory ? setSelectedCategory : setInternalCategory;
 
   // Extract all categories dynamically from posters
   const categories = useMemo(() => {
@@ -15,13 +26,13 @@ export default function ShopView({ posters, searchQuery, onSelectPoster, onAddTo
   // Filter posters by search and category
   const filteredPosters = useMemo(() => {
     return posters.filter(p => {
-      const matchCategory = selectedCategory === 'All' || p.category === selectedCategory;
+      const matchCategory = activeCategory === 'All' || p.category === activeCategory;
       const matchSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchCategory && matchSearch;
     });
-  }, [posters, selectedCategory, searchQuery]);
+  }, [posters, activeCategory, searchQuery]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -73,14 +84,14 @@ export default function ShopView({ posters, searchQuery, onSelectPoster, onAddTo
         className="flex flex-wrap items-center justify-center gap-3 mb-12"
       >
         {categories.map((cat) => {
-          const isActive = selectedCategory === cat;
+          const isActive = activeCategory === cat;
           return (
             <motion.button
               key={cat}
               variants={categoryItemVariants}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setSelectedCategory(cat)}
+              onClick={() => setActiveCategory(cat)}
               className={`relative px-6 py-2.5 rounded-full font-semibold text-sm border transition-colors duration-300 focus:outline-none ${
                 isActive
                   ? 'border-transparent text-white'
@@ -119,7 +130,7 @@ export default function ShopView({ posters, searchQuery, onSelectPoster, onAddTo
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            key={selectedCategory + searchQuery}
+            key={activeCategory + searchQuery}
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
           >
             {filteredPosters.map((poster) => (
@@ -149,7 +160,7 @@ export default function ShopView({ posters, searchQuery, onSelectPoster, onAddTo
             </p>
             <button
               onClick={() => {
-                setSelectedCategory('All');
+                setActiveCategory('All');
               }}
               className="mt-6 px-6 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-500 transition-colors"
             >

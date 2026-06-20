@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function Hero({ setView, banners = [] }) {
+export default function Hero({ setView, banners = [], setShopCategory }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0); // -1 for left, 1 for right
 
@@ -194,7 +194,16 @@ export default function Hero({ setView, banners = [] }) {
               <motion.button
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                onClick={() => setView(banners[currentIndex]?.link || 'shop')}
+                onClick={() => {
+                  const link = banners[currentIndex]?.link;
+                  if (link && link.startsWith('category:')) {
+                    const category = link.substring('category:'.length);
+                    if (setShopCategory) setShopCategory(category);
+                    setView('shop');
+                  } else {
+                    setView(link || 'shop');
+                  }
+                }}
                 className="px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-500 hover:to-indigo-550 text-white font-bold text-sm sm:text-base flex items-center justify-center space-x-2.5 shadow-lg shadow-blue-500/25 transition-all"
               >
                 <span>Explore Store</span>

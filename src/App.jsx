@@ -35,9 +35,17 @@ export default function App() {
     const validViews = ['home', 'shop', 'wishlist', 'checkout', 'login', 'account', 'faq', 'admin'];
     return validViews.includes(hash) ? hash : 'home';
   });
+  const [shopCategory, setShopCategory] = useState('All');
   const [faqCategory, setFaqCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPosterId, setSelectedPosterId] = useState(null);
+
+  const handleNavbarSetView = (view) => {
+    if (view === 'shop') {
+      setShopCategory('All');
+    }
+    setView(view);
+  };
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Auth User State
@@ -387,7 +395,7 @@ export default function App() {
       {/* Navigation Menu */}
       <Navbar
         currentView={currentView}
-        setView={setView}
+        setView={handleNavbarSetView}
         theme={theme}
         toggleTheme={toggleTheme}
         cartCount={cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
@@ -408,7 +416,7 @@ export default function App() {
         >
           {currentView === 'home' && (
             <>
-              <Hero setView={setView} banners={banners} />
+              <Hero setView={setView} banners={banners} setShopCategory={setShopCategory} />
 
               {/* Featured Collection Section */}
               <section className="max-w-7xl mx-auto px-6 py-16">
@@ -466,6 +474,8 @@ export default function App() {
               onAddToCart={handleAddToCart}
               wishlist={wishlist}
               onToggleWishlist={handleToggleWishlist}
+              selectedCategory={shopCategory}
+              setSelectedCategory={setShopCategory}
             />
           )}
 

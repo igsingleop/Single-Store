@@ -2282,6 +2282,9 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                         className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-semibold cursor-pointer"
                       >
                         <option value="shop">Shop All Posters</option>
+                        {uniqueCategories.filter(cat => cat !== 'All').map(cat => (
+                          <option key={cat} value={`category:${cat}`}>Shop Category: {cat}</option>
+                        ))}
                         <option value="wishlist">My Wishlist</option>
                         <option value="faq">FAQ / Help Center</option>
                         <option value="home">Homepage Hero</option>
