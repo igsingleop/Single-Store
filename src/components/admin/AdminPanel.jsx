@@ -37,7 +37,11 @@ import {
   getEstimatedDeliveryDate,
   getReviews,
   deleteReview,
-  updateReview
+  updateReview,
+  getBanners,
+  addBanner,
+  updateBanner,
+  deleteBanner
 } from '../../utils/db';
 
 export default function AdminPanel({ session, onLogout, onBackToStore = () => window.location.href = '/' }) {
@@ -48,6 +52,16 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const [coupons, setCoupons] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [banners, setBanners] = useState([]);
+
+  // Banner form states
+  const [editingBannerId, setEditingBannerId] = useState(null);
+  const [bannerTitle, setBannerTitle] = useState('');
+  const [bannerSubtitle, setBannerSubtitle] = useState('');
+  const [bannerImage, setBannerImage] = useState('');
+  const [bannerLink, setBannerLink] = useState('shop');
+  const [bannerImageInputMode, setBannerImageInputMode] = useState('file'); // 'file' or 'url'
+  const [bannerImageUploading, setBannerImageUploading] = useState(false);
 
   // Form states for creating/editing poster
   const [editingId, setEditingId] = useState(null);
@@ -98,6 +112,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
       const dbCoupons = await getCoupons();
       let dbCustomers = await getCustomers();
       const dbReviews = await getReviews();
+      const dbBanners = await getBanners();
 
       // Automatically sync customer profiles if none exist but orders do
       if (dbCustomers.length === 0 && dbOrders.length > 0) {
@@ -117,6 +132,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
       setCoupons(dbCoupons);
       setCustomers(dbCustomers);
       setReviews(dbReviews);
+      setBanners(dbBanners);
     };
     fetchAllData();
 
@@ -670,6 +686,109 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
     e.target.value = ''; // Reset file input
   };
 
+  const handleBannerImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const originalBase64 = evt.target.result;
+      
+      setBannerImageUploading(true);
+      fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          image: originalBase64,
+          filename: file.name
+        })
+      })
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Upload failed with status ${res.status}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data.success && data.url) {
+          setBannerImage(data.url);
+        } else {
+          throw new Error('Upload succeeded but no public URL returned');
+        }
+      })
+      .catch((err) => {
+        console.warn("Backblaze B2 upload failed, using local Base64 string fallback:", err);
+        alert("B2 storage not available or configured. Image saved to local session. (" + err.message + ")");
+        setBannerImage(originalBase64);
+      })
+      .finally(() => {
+        setBannerImageUploading(false);
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleBannerSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!bannerTitle || !bannerSubtitle) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
+    const imgUrl = bannerImage || 'https://via.placeholder.com/1200x500?text=No+Image';
+
+    if (editingBannerId) {
+      // Edit
+      const updated = {
+        id: editingBannerId,
+        title: bannerTitle,
+        subtitle: bannerSubtitle,
+        image: imgUrl,
+        link: bannerLink
+      };
+      await updateBanner(updated);
+      alert("Banner updated successfully!");
+      setEditingBannerId(null);
+    } else {
+      // Add
+      const newBanner = {
+        id: Date.now().toString(),
+        title: bannerTitle,
+        subtitle: bannerSubtitle,
+        image: imgUrl,
+        link: bannerLink
+      };
+      await addBanner(newBanner);
+      alert("Banner added successfully!");
+    }
+
+    // Reset Form
+    setBannerTitle('');
+    setBannerSubtitle('');
+    setBannerImage('');
+    setBannerLink('shop');
+  };
+
+  const handleEditBannerClick = (b) => {
+    setEditingBannerId(b.id);
+    setBannerTitle(b.title);
+    setBannerSubtitle(b.subtitle);
+    setBannerImage(b.image || '');
+    setBannerLink(b.link || 'shop');
+    setBannerImageInputMode(b.image && b.image.startsWith('data:') ? 'file' : 'url');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteBannerClick = async (id) => {
+    if (window.confirm("Are you sure you want to delete this banner?")) {
+      await deleteBanner(id);
+    }
+  };
+
   const handleExportCustomersCSV = () => {
     if (customers.length === 0) {
       alert("No customer profiles to export.");
@@ -798,6 +917,18 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
         >
           <Star className="w-4 h-4 animate-none" />
           <span>Reviews</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('banners')}
+          className={`shrink-0 lg:shrink flex-1 lg:flex-none px-4 py-3 rounded-xl sm:rounded-2xl font-bold text-xs md:text-sm flex items-center justify-center lg:justify-start space-x-2 transition-all duration-300 ${
+            activeTab === 'banners'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/55'
+          }`}
+        >
+          <Grid className="w-4 h-4 animate-none" />
+          <span>Banners</span>
         </button>
 
         <button
@@ -2084,6 +2215,255 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                 </table>
               </div>
             </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'banners' && (
+            <motion.div
+              key="banners"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="grid grid-cols-1 2xl:grid-cols-3 gap-8 items-start"
+            >
+              {/* Left Column: Create/Edit Form */}
+              <div className="2xl:col-span-1 space-y-6">
+                <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md">
+                  <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
+                    {editingBannerId ? 'Edit Home Page Banner' : 'Add New Banner'}
+                  </h3>
+                  <form onSubmit={handleBannerSubmit} className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                        Banner Title *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Exclusive Tamil Art"
+                        value={bannerTitle}
+                        onChange={(e) => setBannerTitle(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                        Banner Subtitle *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Vibrant and Culturally Rooted Designs"
+                        value={bannerSubtitle}
+                        onChange={(e) => setBannerSubtitle(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                        Button Action (CTA View)
+                      </label>
+                      <select
+                        value={bannerLink}
+                        onChange={(e) => setBannerLink(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-semibold cursor-pointer"
+                      >
+                        <option value="shop">Shop All Posters</option>
+                        <option value="wishlist">My Wishlist</option>
+                        <option value="faq">FAQ / Help Center</option>
+                        <option value="home">Homepage Hero</option>
+                      </select>
+                    </div>
+
+                    {/* Dual Image Input Mode */}
+                    <div>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+                          Banner Background Image *
+                        </label>
+                        <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 text-[9px] font-bold w-fit self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => { setBannerImageInputMode('file'); }}
+                            className={`px-2.5 py-1 rounded-md transition-all ${
+                              bannerImageInputMode === 'file'
+                                ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-655 dark:text-blue-400'
+                                : 'text-zinc-500'
+                            }`}
+                          >
+                            Upload File
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setBannerImageInputMode('url'); }}
+                            className={`px-2.5 py-1 rounded-md transition-all ${
+                              bannerImageInputMode === 'url'
+                                ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-655 dark:text-blue-400'
+                                : 'text-zinc-500'
+                            }`}
+                          >
+                            Image URL
+                          </button>
+                        </div>
+                      </div>
+
+                      {bannerImageInputMode === 'file' ? (
+                        <div className="relative group border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-blue-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleBannerImageUpload}
+                            disabled={bannerImageUploading}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          {bannerImageUploading ? (
+                            <div className="text-center text-blue-500">
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto mb-1" />
+                              <span className="text-[10px] font-bold block">Uploading to B2 Cloud...</span>
+                            </div>
+                          ) : bannerImage ? (
+                            <div className="text-center">
+                              <img
+                                src={bannerImage}
+                                alt="Preview"
+                                className="w-24 h-12 object-cover rounded-md mx-auto mb-2 border border-zinc-200 dark:border-zinc-800 bg-white"
+                                onError={(e) => { e.target.src = 'https://via.placeholder.com/1200x500?text=Preview+Error'; }}
+                              />
+                              <span className="text-[9px] text-emerald-500 font-bold block">
+                                {bannerImage.startsWith('data:') ? 'Image Loaded (Local Session)' : 'Image Stored in B2 Cloud'}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="text-center text-zinc-400">
+                              <Upload className="w-5 h-5 mx-auto mb-1 text-zinc-400" />
+                              <span className="text-[10px] font-semibold">Upload Banner Image</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            placeholder="https://images.unsplash.com/photo-..."
+                            value={bannerImage && !bannerImage.startsWith('data:image/') ? bannerImage : ''}
+                            onChange={(e) => setBannerImage(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                          />
+                          {bannerImage && !bannerImage.startsWith('data:image/') && (
+                            <div className="text-center">
+                              <img
+                                src={bannerImage}
+                                alt="Preview"
+                                className="w-24 h-12 object-cover rounded-md mx-auto mb-1 border border-zinc-200 dark:border-zinc-800 bg-white"
+                                onError={(e) => { e.target.src = 'https://via.placeholder.com/1200x500?text=Invalid+Image+URL'; }}
+                              />
+                              <span className="text-[9px] text-zinc-400 font-semibold block">URL Preview</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        type="submit"
+                        disabled={bannerImageUploading}
+                        className={`flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-550 text-white font-bold text-xs shadow-md transition-colors ${
+                          bannerImageUploading ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        {bannerImageUploading ? 'Uploading Image...' : editingBannerId ? 'Update Banner' : 'Add Banner to Store'}
+                      </button>
+                      {editingBannerId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingBannerId(null);
+                            setBannerTitle('');
+                            setBannerSubtitle('');
+                            setBannerImage('');
+                            setBannerLink('shop');
+                          }}
+                          className="px-4 py-3 rounded-xl bg-zinc-250 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs hover:bg-zinc-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              {/* Right Column: Banners List Table */}
+              <div className="glass-panel p-6 rounded-3xl border border-zinc-200/50 dark:border-zinc-800 shadow-md 2xl:col-span-2 h-fit w-full min-w-0">
+                <h3 className="font-outfit text-base font-bold text-zinc-900 dark:text-white mb-6">
+                  Store Banners ({banners.length})
+                </h3>
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+                    <thead>
+                      <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-555 font-bold text-[9px] uppercase tracking-wider">
+                        <th className="pb-3 w-16 text-center">#</th>
+                        <th className="pb-3 w-36">Image Preview</th>
+                        <th className="pb-3">Title & Subtitle</th>
+                        <th className="pb-3 w-32">CTA Action</th>
+                        <th className="pb-3 w-28 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200/40 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">
+                      {banners.map((b, idx) => (
+                        <tr key={b.id}>
+                          <td className="py-4 text-center font-bold text-zinc-400">{idx + 1}</td>
+                          <td className="py-4">
+                            <img
+                              src={b.image}
+                              alt={b.title}
+                              className="w-24 h-12 object-cover rounded border border-zinc-200 dark:border-zinc-800 bg-white"
+                              onError={(e) => { e.target.src = 'https://via.placeholder.com/1200x500?text=No+Image'; }}
+                            />
+                          </td>
+                          <td className="py-4 font-medium">
+                            <div className="font-bold text-zinc-900 dark:text-white text-sm leading-tight">{b.title}</div>
+                            <div className="text-[10px] text-zinc-450 dark:text-zinc-500 font-semibold mt-1 leading-snug">{b.subtitle}</div>
+                          </td>
+                          <td className="py-4 font-semibold text-blue-600 dark:text-blue-400">
+                            {b.link || 'shop'}
+                          </td>
+                          <td className="py-4 text-right">
+                            <div className="inline-flex gap-2">
+                              <button
+                                onClick={() => handleEditBannerClick(b)}
+                                className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-600 text-blue-600 hover:text-white transition-colors"
+                                title="Edit Banner"
+                                aria-label="Edit banner"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBannerClick(b.id)}
+                                className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-650 hover:text-white transition-colors"
+                                title="Delete Banner"
+                                aria-label="Delete banner"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {banners.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-zinc-550 dark:text-zinc-500">
+                            No banners configured. Add a banner using the form.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

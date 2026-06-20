@@ -15,6 +15,7 @@ const DB_ORDERS_KEY = 'SINGLESTORE_ORDERS';
 const DB_CART_KEY = 'SINGLESTORE_CART';
 const ADMIN_USERS_KEY = 'SINGLESTORE_ADMIN_USERS';
 const DB_COUPONS_KEY = 'SINGLESTORE_COUPONS';
+const DB_BANNERS_KEY = 'SINGLESTORE_BANNERS';
 
 const defaultPosters = [
   {
@@ -56,6 +57,23 @@ const defaultAdmins = [
     name: 'Super Admin',
     email: 'admin@singlestore.in',
     password: 'Amma@9344'
+  }
+];
+
+const defaultBanners = [
+  {
+    id: '1',
+    title: 'Transform Your Space',
+    subtitle: 'Premium Anime & Custom Posters',
+    image: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?q=80&w=1200&auto=format&fit=crop',
+    link: 'shop'
+  },
+  {
+    id: '2',
+    title: 'Exclusive Tamil Art',
+    subtitle: 'Vibrant and Culturally Rooted Designs',
+    image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?q=80&w=1200&auto=format&fit=crop',
+    link: 'shop'
   }
 ];
 
@@ -122,6 +140,20 @@ export async function initDB() {
     } catch (e) {
       console.error("Firestore seeding coupons error:", e);
     }
+
+    // 4. Seed default banners if collection is empty
+    try {
+      const bannersQ = query(collection(firestoreDb, 'banners'));
+      const bannersSnapshot = await getDocs(bannersQ);
+      if (bannersSnapshot.empty) {
+        console.log("Seeding default banners into Firestore...");
+        for (const banner of defaultBanners) {
+          await setDoc(doc(firestoreDb, 'banners', String(banner.id)), banner);
+        }
+      }
+    } catch (e) {
+      console.error("Firestore seeding banners error:", e);
+    }
   } else {
     // LocalStorage fallback
     if (!localStorage.getItem(DB_POSTERS_KEY)) {
@@ -142,6 +174,9 @@ export async function initDB() {
     }
     if (!localStorage.getItem('SINGLESTORE_REVIEWS')) {
       localStorage.setItem('SINGLESTORE_REVIEWS', JSON.stringify([]));
+    }
+    if (!localStorage.getItem(DB_BANNERS_KEY)) {
+      localStorage.setItem(DB_BANNERS_KEY, JSON.stringify(defaultBanners));
     }
   }
 
@@ -718,5 +753,81 @@ export async function updateReview(updatedReview) {
       localStorage.setItem('SINGLESTORE_REVIEWS', JSON.stringify(reviews));
       window.dispatchEvent(new Event('singlestore_db_update'));
     }
+  }
+}
+
+// --- Banner Operations ---
+export async function getBanners() {
+  let list = [];
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      const snapshot = await getDocs(collection(firestoreDb, 'banners'));
+      snapshot.forEach(doc => {
+        list.push({ ...doc.data(), id: doc.id });
+      });
+    } catch (e) {
+      console.error("Firestore getBanners error:", e);
+      list = safeParse(DB_BANNERS_KEY, defaultBanners);
+    }
+  } else {
+    list = safeParse(DB_BANNERS_KEY, defaultBanners);
+  }
+
+  const finalResult = list.length === 0 ? defaultBanners : list;
+  return finalResult.map(b => ({
+    ...b,
+    image: formatPosterImage(b.image)
+  }));
+}
+
+export async function addBanner(banner) {
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      const bannerId = banner.id || doc(collection(firestoreDb, 'banners')).id;
+      await setDoc(doc(firestoreDb, 'banners', String(bannerId)), { ...banner, id: bannerId });
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    } catch (e) {
+      console.error("Firestore addBanner error:", e);
+    }
+  } else {
+    const banners = safeParse(DB_BANNERS_KEY, defaultBanners);
+    banners.push(banner);
+    localStorage.setItem(DB_BANNERS_KEY, JSON.stringify(banners));
+    window.dispatchEvent(new Event('singlestore_db_update'));
+  }
+}
+
+export async function updateBanner(updatedBanner) {
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      await setDoc(doc(firestoreDb, 'banners', String(updatedBanner.id)), updatedBanner, { merge: true });
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    } catch (e) {
+      console.error("Firestore updateBanner error:", e);
+    }
+  } else {
+    const banners = safeParse(DB_BANNERS_KEY, defaultBanners);
+    const index = banners.findIndex(b => String(b.id) === String(updatedBanner.id));
+    if (index > -1) {
+      banners[index] = { ...banners[index], ...updatedBanner };
+      localStorage.setItem(DB_BANNERS_KEY, JSON.stringify(banners));
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    }
+  }
+}
+
+export async function deleteBanner(id) {
+  if (isFirebaseConfigured && firestoreDb) {
+    try {
+      await deleteDoc(doc(firestoreDb, 'banners', String(id)));
+      window.dispatchEvent(new Event('singlestore_db_update'));
+    } catch (e) {
+      console.error("Firestore deleteBanner error:", e);
+    }
+  } else {
+    let banners = safeParse(DB_BANNERS_KEY, defaultBanners);
+    banners = banners.filter(b => String(b.id) !== String(id));
+    localStorage.setItem(DB_BANNERS_KEY, JSON.stringify(banners));
+    window.dispatchEvent(new Event('singlestore_db_update'));
   }
 }

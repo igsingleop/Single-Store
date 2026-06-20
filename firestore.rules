@@ -55,5 +55,11 @@ service cloud.firestore {
     match /reviews/{reviewId} {
       allow read, write: if true;
     }
+
+    // 8. Banners Collection
+    // Anyone can read banners, and anyone can write/manage banners (Admin Panel).
+    match /banners/{bannerId} {
+      allow read, write: if true;
+    }
   }
 }

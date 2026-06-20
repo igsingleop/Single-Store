@@ -6,7 +6,8 @@ import {
   saveCart,
   initDB,
   getCoupons,
-  getEstimatedDeliveryDate
+  getEstimatedDeliveryDate,
+  getBanners
 } from './utils/db';
 import { subscribeAuth, logout } from './utils/auth';
 
@@ -29,7 +30,11 @@ const AccountView = lazy(() => import('./components/AccountView'));
 const HelpFaqView = lazy(() => import('./components/HelpFaqView'));
 
 export default function App() {
-  const [currentView, setView] = useState('home');
+  const [currentView, setView] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    const validViews = ['home', 'shop', 'wishlist', 'checkout', 'login', 'account', 'faq', 'admin'];
+    return validViews.includes(hash) ? hash : 'home';
+  });
   const [faqCategory, setFaqCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPosterId, setSelectedPosterId] = useState(null);
@@ -57,6 +62,7 @@ export default function App() {
 
   // Core reactive data states
   const [posters, setPosters] = useState([]);
+  const [banners, setBanners] = useState([]);
   const [cart, setCart] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -94,6 +100,8 @@ export default function App() {
       setCart(getCart());
       const dbCoupons = await getCoupons();
       setCoupons(dbCoupons);
+      const dbBanners = await getBanners();
+      setBanners(dbBanners);
     };
     loadInitialData();
 
@@ -103,9 +111,16 @@ export default function App() {
       setCart(getCart());
       const dbCoupons = await getCoupons();
       setCoupons(dbCoupons);
+      const dbBanners = await getBanners();
+      setBanners(dbBanners);
     };
     const handleStorageChange = (e) => {
-      if (e.key === 'SINGLESTORE_POSTERS' || e.key === 'SINGLESTORE_ORDERS' || e.key === 'SINGLESTORE_COUPONS') {
+      if (
+        e.key === 'SINGLESTORE_POSTERS' ||
+        e.key === 'SINGLESTORE_ORDERS' ||
+        e.key === 'SINGLESTORE_COUPONS' ||
+        e.key === 'SINGLESTORE_BANNERS'
+      ) {
         handleDbUpdate();
       }
     };
@@ -147,19 +162,29 @@ export default function App() {
     }
   }, [cart, appliedCoupon]);
 
-  // Handle URL hash changes to load the hidden admin login view (#admin or #login)
+  // Synchronize state when URL hash changes
   useEffect(() => {
     const handleHashChange = () => {
-      if (window.location.hash === '#admin' || window.location.hash === '#login') {
-        setView('login');
+      const hash = window.location.hash.replace('#', '');
+      const validViews = ['home', 'shop', 'wishlist', 'checkout', 'login', 'account', 'faq', 'admin'];
+      if (validViews.includes(hash)) {
+        setView(hash);
+      } else if (!hash) {
+        setView('home');
       }
     };
-    handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
   }, []);
+
+  // Synchronize URL hash when currentView state changes
+  useEffect(() => {
+    if (currentView) {
+      window.location.hash = currentView;
+    }
+  }, [currentView]);
 
   // Theme synchronization effect
   useEffect(() => {
@@ -383,7 +408,7 @@ export default function App() {
         >
           {currentView === 'home' && (
             <>
-              <Hero setView={setView} />
+              <Hero setView={setView} banners={banners} />
 
               {/* Featured Collection Section */}
               <section className="max-w-7xl mx-auto px-6 py-16">
