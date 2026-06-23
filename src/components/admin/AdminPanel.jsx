@@ -43,6 +43,7 @@ import {
   updateBanner,
   deleteBanner
 } from '../../utils/db';
+import { downloadInvoicePDF } from '../../utils/invoice';
 
 export default function AdminPanel({ session, onLogout, onBackToStore = () => window.location.href = '/' }) {
   // Default to inventory management workspace
@@ -2680,11 +2681,22 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                   <span className="text-[10px] text-zinc-400 font-bold uppercase block">Payment Method</span>
                   <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 font-sans">Razorpay Secure Online</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-zinc-400 font-bold uppercase block">Grand Total</span>
-                  <span className="font-inter text-xl font-extrabold text-zinc-900 dark:text-white">
-                    {formatPrice(selectedOrderDetails.total)}
-                  </span>
+                <div className="flex items-center gap-4">
+                  {selectedOrderDetails.status?.toLowerCase() === 'delivered' && (
+                    <button
+                      onClick={() => downloadInvoicePDF(selectedOrderDetails)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow transition-all"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Invoice</span>
+                    </button>
+                  )}
+                  <div className="text-right">
+                    <span className="text-[10px] text-zinc-400 font-bold uppercase block">Grand Total</span>
+                    <span className="font-inter text-xl font-extrabold text-zinc-900 dark:text-white">
+                      {formatPrice(selectedOrderDetails.total)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </motion.div>

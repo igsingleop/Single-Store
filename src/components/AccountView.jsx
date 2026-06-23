@@ -13,10 +13,12 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  Star
+  Star,
+  Download
 } from 'lucide-react';
 import { getOrders, getEstimatedDeliveryDate, getReviews } from '../utils/db';
 import { getUserProfileDetails, updateUserProfileDetails } from '../utils/auth';
+import { downloadInvoicePDF } from '../utils/invoice';
 import ReviewModal from './ReviewModal';
 
 export default function AccountView({ setView, user, posters = [], onLogout }) {
@@ -771,7 +773,7 @@ export default function AccountView({ setView, user, posters = [], onLogout }) {
                               >
                                 <div className="pt-4 mt-4 border-t border-zinc-200/50 dark:border-zinc-800/80 space-y-4">
                                   {/* Info Badges & Delivery Estimate */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-100/30 dark:bg-zinc-900/20 p-4 rounded-xl border border-zinc-200/30 dark:border-zinc-800/50 font-sans">
+                                  <div className={`grid grid-cols-1 ${order.status?.toLowerCase() === 'delivered' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4 bg-zinc-100/30 dark:bg-zinc-900/20 p-4 rounded-xl border border-zinc-200/30 dark:border-zinc-800/50 font-sans`}>
                                     <div>
                                       <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Order Date</span>
                                       <div className="flex items-center gap-1 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 font-sans">
@@ -798,6 +800,18 @@ export default function AccountView({ setView, user, posters = [], onLogout }) {
                                         </>
                                       )}
                                     </div>
+                                    {order.status?.toLowerCase() === 'delivered' && (
+                                      <div className="flex flex-col justify-center">
+                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Invoice</span>
+                                        <button
+                                          onClick={() => downloadInvoicePDF(order, details)}
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-bold shadow-sm hover:shadow transition-all w-fit mt-0.5"
+                                        >
+                                          <Download className="w-3.5 h-3.5" />
+                                          <span>Download PDF</span>
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
 
                                   {/* Order Items list */}

@@ -35,6 +35,15 @@ export function getOrderAddress(order) {
   return order.shippingAddress || 'Not Provided, India';
 }
 
+const preloadImage = (src) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+  });
+};
+
 // Function to dynamically load html2pdf script
 const loadHtml2Pdf = () => {
   return new Promise((resolve, reject) => {
@@ -51,9 +60,40 @@ const loadHtml2Pdf = () => {
   });
 };
 
+export function getPlaceOfSupply(order) {
+  const address = getOrderAddress(order).toLowerCase();
+  if (address.includes('tamil nadu') || address.includes('tn') || address.includes('erode') || address.includes('chennai') || address.includes('coimbatore')) {
+    return 'Tamil Nadu';
+  }
+  const states = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
+    'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
+    'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
+    'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh',
+    'Uttarakhand', 'West Bengal', 'Delhi', 'Puducherry', 'Jammu & Kashmir', 'Ladakh'
+  ];
+  for (const state of states) {
+    if (address.includes(state.toLowerCase())) {
+      return state;
+    }
+  }
+  const parts = getOrderAddress(order).split(',');
+  if (parts.length >= 3) {
+    return parts[parts.length - 3].trim();
+  }
+  return 'Tamil Nadu';
+}
+
 export async function downloadInvoicePDF(order, userDetails = null) {
   try {
     const html2pdf = await loadHtml2Pdf();
+
+    // Preload logo and signature images to browser cache to guarantee they are loaded before capture
+    await Promise.all([
+      preloadImage('/favicon.jpg'),
+      preloadImage('/favicon.png'),
+      preloadImage('/signature.png')
+    ]);
 
     // Create element for PDF generation
     const element = document.createElement('div');
@@ -68,41 +108,67 @@ export async function downloadInvoicePDF(order, userDetails = null) {
     const invoiceId = getOrderInvoiceId(order);
     const address = getOrderAddress(order);
     const phone = getOrderPhone(order, userDetails);
+    const placeOfSupply = getPlaceOfSupply(order);
 
-    const transactionId = order.transactionId || order.id || 'N/A';
     const orderId = order.orderId || order.razorpayOrderId || `SS-ORD-${Math.abs(hashCode(order.id || '')).toString().padStart(8, '0')}`;
-
-    const itemsRows = order.items.map((item, idx) => {
-      const qty = item.quantity || 1;
-      const rate = parseFloat(item.price);
-      const amount = rate * qty;
-
-      return `
-        <tr style="border-bottom: 1px solid #e5e7eb;">
-          <td style="padding: 12px 8px; text-align: left; font-size: 12px; color: #374151; vertical-align: top;">
-            ${idx + 1}
-          </td>
-          <td style="padding: 12px 8px; text-align: left; font-size: 12px; color: #374151; vertical-align: top;">
-            <div style="font-weight: 700; color: #111827;">${item.title}</div>
-            ${((item.size && item.size !== '18x24"') || (item.frame && item.frame !== 'Print Only')) ? `<div style="font-size: 10px; color: #6b7280; margin-top: 2px;">Size: ${item.size} | Frame: ${item.frame}</div>` : ''}
-          </td>
-          <td style="padding: 12px 8px; text-align: center; font-size: 12px; color: #374151; vertical-align: top;">
-            ${qty}
-          </td>
-          <td style="padding: 12px 8px; text-align: right; font-size: 12px; color: #374151; font-family: monospace; vertical-align: top;">
-            ${rate.toFixed(2)}
-          </td>
-          <td style="padding: 12px 8px; text-align: right; font-size: 12px; font-weight: 600; color: #111827; font-family: monospace; vertical-align: top;">
-            ${amount.toFixed(2)}
-          </td>
-        </tr>
-      `;
-    }).join('');
 
     const totalPaid = parseFloat(order.total);
     const subtotalBeforeDiscount = order.items.reduce((sum, item) => sum + parseFloat(item.price) * (item.quantity || 1), 0);
     const discountAmount = Math.max(0, subtotalBeforeDiscount - totalPaid);
     const hasDiscount = discountAmount > 0.01;
+
+    // GST calculations (12% total, split into 6% SGST + 6% CGST)
+    const subtotalExclusive = order.items.reduce((sum, item) => sum + (parseFloat(item.price) / 1.12) * (item.quantity || 1), 0);
+    const discountExclusive = discountAmount / 1.12;
+    const taxableValue = subtotalExclusive - discountExclusive;
+    const sgstTotal = taxableValue * 0.06;
+    const cgstTotal = taxableValue * 0.06;
+
+    const itemsRows = order.items.map((item, idx) => {
+      const qty = item.quantity || 1;
+      const rateInclusive = parseFloat(item.price);
+      const rateExclusive = rateInclusive / 1.12;
+      const amountExclusive = rateExclusive * qty;
+      const sgstAmount = amountExclusive * 0.06;
+      const cgstAmount = amountExclusive * 0.06;
+      const cessAmount = 0.00;
+
+      return `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 12px 8px; text-align: center; font-size: 11px; color: #374151; vertical-align: middle;">
+            ${idx + 1}
+          </td>
+          <td style="padding: 12px 8px; text-align: left; font-size: 11px; color: #374151; vertical-align: middle;">
+            <div style="font-weight: 700; color: #111827;">${item.title}</div>
+            ${((item.size && item.size !== '18x24"') || (item.frame && item.frame !== 'Print Only')) ? `<div style="font-size: 9px; color: #6b7280; margin-top: 2px;">Size: ${item.size} | Frame: ${item.frame}</div>` : ''}
+          </td>
+          <td style="padding: 12px 8px; text-align: center; font-size: 11px; color: #374151; vertical-align: middle;">
+            49111010
+          </td>
+          <td style="padding: 12px 8px; text-align: center; font-size: 11px; color: #374151; vertical-align: middle;">
+            ${qty}
+          </td>
+          <td style="padding: 12px 8px; text-align: right; font-size: 11px; color: #374151; font-family: monospace; vertical-align: middle;">
+            ${rateExclusive.toFixed(2)}
+          </td>
+          <td style="padding: 12px 8px; text-align: right; font-size: 11px; color: #374151; vertical-align: middle;">
+            <div style="font-family: monospace;">${sgstAmount.toFixed(2)}</div>
+            <div style="font-size: 9px; color: #6b7280; margin-top: 1px; text-align: right;">6</div>
+          </td>
+          <td style="padding: 12px 8px; text-align: right; font-size: 11px; color: #374151; vertical-align: middle;">
+            <div style="font-family: monospace;">${cgstAmount.toFixed(2)}</div>
+            <div style="font-size: 9px; color: #6b7280; margin-top: 1px; text-align: right;">6</div>
+          </td>
+          <td style="padding: 12px 8px; text-align: right; font-size: 11px; color: #374151; vertical-align: middle;">
+            <div style="font-family: monospace;">${cessAmount.toFixed(2)}</div>
+            <div style="font-size: 9px; color: #6b7280; margin-top: 1px; text-align: right;">0</div>
+          </td>
+          <td style="padding: 12px 8px; text-align: right; font-size: 11px; font-weight: 600; color: #111827; font-family: monospace; vertical-align: middle;">
+            ${amountExclusive.toFixed(2)}
+          </td>
+        </tr>
+      `;
+    }).join('');
 
     const invoiceDate = new Date(order.date).toLocaleDateString();
     const dueDate = new Date(order.date).toLocaleDateString();
@@ -115,7 +181,7 @@ export async function downloadInvoicePDF(order, userDetails = null) {
             <td style="vertical-align: top; text-align: left; width: 60%;">
               <!-- Logo Container -->
               <div style="width: 70px; height: 70px; margin-bottom: 20px;">
-                <img src="/favicon.jpg" style="width: 70px; height: 70px; object-fit: contain; border-radius: 8px;" alt="Logo" />
+                <img src="/favicon.jpg" style="width: 70px; height: 70px; object-fit: contain; border-radius: 8px;" alt="Logo" onerror="this.src='/favicon.png'" />
               </div>
               <div style="margin-top: 15px; font-size: 12px; color: #374151; line-height: 1.5;">
                 <div style="font-weight: 700; color: #111827; font-size: 13px; margin-bottom: 2px;">Single Store</div>
@@ -128,7 +194,7 @@ export async function downloadInvoicePDF(order, userDetails = null) {
               </div>
             </td>
             <td style="vertical-align: top; text-align: right; width: 40%;">
-              <h1 style="margin: 0; font-size: 26px; font-weight: 850; color: #111827; font-family: 'Outfit', 'Inter', sans-serif; letter-spacing: 0.5px;">INVOICE</h1>
+              <h1 style="margin: 0; font-size: 26px; font-weight: 850; color: #111827; font-family: 'Outfit', 'Inter', sans-serif; letter-spacing: 0.5px;">TAX INVOICE</h1>
               <div style="margin-top: 5px; font-size: 12px; font-weight: 700; color: #111827; font-family: monospace;">Invoice# ${invoiceId}</div>
             </td>
           </tr>
@@ -143,24 +209,21 @@ export async function downloadInvoicePDF(order, userDetails = null) {
               <div style="font-size: 12px; color: #374151; line-height: 1.5; white-space: pre-line;">${address}</div>
               ${phone ? `<div style="font-size: 12px; color: #4b5563; margin-top: 3px;">Phone: ${phone}</div>` : ''}
               ${order.customerEmail ? `<div style="font-size: 12px; color: #4b5563;">Email: ${order.customerEmail}</div>` : ''}
+              <div style="font-size: 12px; color: #111827; font-weight: 600; margin-top: 10px;">Place of Supply: <span style="font-weight: 500; color: #374151;">${placeOfSupply}</span></div>
             </td>
             <td style="vertical-align: top; text-align: right; width: 45%;">
-              <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-left: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-left: auto;">
                 <tr>
-                  <td style="padding: 4px 0; color: #4b5563; font-weight: 600; text-align: right; width: 45%;">Invoice Date:</td>
-                  <td style="padding: 4px 0 4px 10px; color: #111827; font-weight: 500; text-align: right; width: 55%;">${invoiceDate}</td>
+                  <td style="padding: 4px 0; color: #4b5563; font-weight: 600; text-align: right; width: 50%;">Invoice Date :</td>
+                  <td style="padding: 4px 0 4px 10px; color: #111827; font-weight: 500; text-align: right; width: 50%;">${invoiceDate}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 4px 0; color: #4b5563; font-weight: 600; text-align: right;">Due Date:</td>
+                  <td style="padding: 4px 0; color: #4b5563; font-weight: 600; text-align: right;">Due Date :</td>
                   <td style="padding: 4px 0 4px 10px; color: #111827; font-weight: 500; text-align: right;">${dueDate}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 4px 0; color: #4b5563; font-weight: 600; text-align: right;">Order ID:</td>
-                  <td style="padding: 4px 0 4px 10px; color: #111827; font-weight: 500; text-align: right; font-family: monospace; font-size: 10px; word-break: break-all;">${orderId}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 4px 0; color: #4b5563; font-weight: 600; text-align: right;">Transaction ID:</td>
-                  <td style="padding: 4px 0 4px 10px; color: #111827; font-weight: 500; text-align: right; font-family: monospace; font-size: 10px; word-break: break-all;">${transactionId}</td>
+                  <td style="padding: 4px 0; color: #4b5563; font-weight: 600; text-align: right;">Order ID :</td>
+                  <td style="padding: 4px 0 4px 10px; color: #111827; font-weight: 500; text-align: right; font-family: monospace; font-size: 11px;">${orderId}</td>
                 </tr>
               </table>
             </td>
@@ -170,12 +233,16 @@ export async function downloadInvoicePDF(order, userDetails = null) {
         <!-- Invoice Items Table -->
         <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
           <thead>
-            <tr style="background-color: #2563eb; color: #ffffff;">
-              <th style="padding: 10px 8px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; width: 40px;">#</th>
-              <th style="padding: 10px 8px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase;">Item Description</th>
-              <th style="padding: 10px 8px; text-align: center; font-size: 11px; font-weight: 700; text-transform: uppercase; width: 60px;">Qty</th>
-              <th style="padding: 10px 8px; text-align: right; font-size: 11px; font-weight: 700; text-transform: uppercase; width: 100px;">Rate</th>
-              <th style="padding: 10px 8px; text-align: right; font-size: 11px; font-weight: 700; text-transform: uppercase; width: 120px;">Amount</th>
+            <tr style="background-color: #1d4ed8; color: #ffffff;">
+              <th style="padding: 10px 8px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; width: 30px;">#</th>
+              <th style="padding: 10px 8px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;">Item Description</th>
+              <th style="padding: 10px 8px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; width: 80px;">HSN/SAC</th>
+              <th style="padding: 10px 8px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; width: 40px;">Qty</th>
+              <th style="padding: 10px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; width: 80px;">Rate</th>
+              <th style="padding: 10px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; width: 80px;">SGST</th>
+              <th style="padding: 10px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; width: 80px;">CGST</th>
+              <th style="padding: 10px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; width: 60px;">Cess</th>
+              <th style="padding: 10px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; width: 95px;">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -188,20 +255,28 @@ export async function downloadInvoicePDF(order, userDetails = null) {
           <tr>
             <td style="width: 60%;"></td>
             <td style="width: 40%; vertical-align: top;">
-              <table style="width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.6; margin-left: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.8; margin-left: auto;">
                 <tr>
                   <td style="padding: 4px 0; color: #4b5563; font-weight: 500; text-align: left;">Sub Total</td>
-                  <td style="padding: 4px 0; color: #111827; font-weight: 600; text-align: right; font-family: monospace;">${subtotalBeforeDiscount.toFixed(2)}</td>
+                  <td style="padding: 4px 0; color: #111827; font-weight: 600; text-align: right; font-family: monospace;">${subtotalExclusive.toFixed(2)}</td>
                 </tr>
                 ${hasDiscount ? `
                 <tr>
                   <td style="padding: 4px 0; color: #10b981; font-weight: 500; text-align: left;">Coupon Discount</td>
-                  <td style="padding: 4px 0; color: #10b981; font-weight: 600; text-align: right; font-family: monospace;">-${discountAmount.toFixed(2)}</td>
+                  <td style="padding: 4px 0; color: #10b981; font-weight: 600; text-align: right; font-family: monospace;">-${discountExclusive.toFixed(2)}</td>
                 </tr>
                 ` : ''}
-                <tr style="border-top: 1px solid #111827; border-bottom: 1px solid #111827;">
-                  <td style="padding: 8px 0; color: #111827; font-weight: 850; text-align: left; font-size: 13px; text-transform: uppercase;">TOTAL</td>
-                  <td style="padding: 8px 0; color: #111827; font-weight: 850; text-align: right; font-size: 14px; font-family: monospace;">Rs.${totalPaid.toFixed(2)}</td>
+                <tr>
+                  <td style="padding: 4px 0; color: #4b5563; font-weight: 500; text-align: left;">SGST (6%)</td>
+                  <td style="padding: 4px 0; color: #111827; font-weight: 600; text-align: right; font-family: monospace;">${sgstTotal.toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #4b5563; font-weight: 500; text-align: left;">CGST (6%)</td>
+                  <td style="padding: 4px 0; color: #111827; font-weight: 600; text-align: right; font-family: monospace;">${cgstTotal.toFixed(2)}</td>
+                </tr>
+                <tr style="border-top: 1px solid #d1d5db; border-bottom: 1.5px solid #111827; font-size: 13px;">
+                  <td style="padding: 8px 0; color: #111827; font-weight: 850; text-align: left; text-transform: uppercase;">TOTAL</td>
+                  <td style="padding: 8px 0; color: #111827; font-weight: 850; text-align: right; font-family: monospace;">Rs.${totalPaid.toFixed(2)}</td>
                 </tr>
               </table>
             </td>
@@ -224,8 +299,8 @@ export async function downloadInvoicePDF(order, userDetails = null) {
             <td style="vertical-align: bottom; text-align: right; width: 40%; padding-top: 20px;">
               <!-- Signature Block -->
               <div style="display: inline-block; text-align: right;">
-                <div style="font-family: 'Caveat', 'Dancing Script', 'Segoe UI', cursive; font-size: 26px; font-weight: 700; color: #1d4ed8; border-bottom: 1.5px solid #1e3a8a; padding-bottom: 2px; width: 120px; text-align: center; margin-left: auto; margin-bottom: 6px; transform: rotate(-2deg); letter-spacing: 1px; user-select: none;">
-                  K. N. Deepak
+                <div style="width: 150px; height: 60px; margin-left: auto; margin-bottom: 4px;">
+                  <img src="/signature.png" style="width: 150px; height: 60px; object-fit: contain;" alt="Signature" />
                 </div>
                 <div style="font-size: 13px; font-weight: 700; color: #111827; font-family: 'Outfit', 'Inter', sans-serif;">
                   Authorized Signatory
@@ -237,17 +312,6 @@ export async function downloadInvoicePDF(order, userDetails = null) {
       </div>
     `;
 
-    // Position at top-left of document so that scrollY: 0 captures it perfectly
-    element.style.position = 'absolute';
-    element.style.left = '0px';
-    element.style.top = '0px';
-    element.style.zIndex = '-99999';
-    element.style.width = '720px';
-    document.body.appendChild(element);
-
-    // Wait 400ms for browser to render styles and image layout
-    await new Promise(resolve => setTimeout(resolve, 400));
-
     const opt = {
       margin: [10, 10, 10, 10],
       filename: `Invoice_${invoiceId}.pdf`,
@@ -256,17 +320,14 @@ export async function downloadInvoicePDF(order, userDetails = null) {
         scale: 2.5,
         useCORS: true,
         logging: true,
-        letterRendering: true,
-        scrollX: 0,
-        scrollY: 0
+        letterRendering: true
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    await html2pdf().from(element).set(opt).save();
-
-    // Clean up DOM
-    document.body.removeChild(element);
+    // Use the correct API chaining order: .set() -> .from() -> .save()
+    // html2pdf automatically handles temporary DOM insertion and clean up offscreen natively.
+    await html2pdf().set(opt).from(element).save();
   } catch (error) {
     console.error("Failed to generate and download PDF invoice:", error);
     alert("Could not download invoice PDF: " + error.message);
