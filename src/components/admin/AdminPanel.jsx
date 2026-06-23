@@ -72,6 +72,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
   const [posterDesc, setPosterDesc] = useState('');
   const [posterImage, setPosterImage] = useState('');
   const [posterRating, setPosterRating] = useState(5);
+  const [customCategoryMode, setCustomCategoryMode] = useState(false);
   
   // Custom image input mode: file upload or external URL
   const [imageInputMode, setImageInputMode] = useState('file'); // 'file' or 'url'
@@ -340,6 +341,7 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
     setPosterDesc('');
     setPosterImage('');
     setPosterRating(5);
+    setCustomCategoryMode(false);
   };
 
   const handleMultipleImageUpload = (index, file) => {
@@ -558,6 +560,9 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
     setPosterDesc(p.description || '');
     setPosterImage(p.image || '');
     setPosterRating(p.rating || 5);
+    // If category doesn't exist in current list, switch to custom mode
+    const existingCats = uniqueCategories.filter(c => c !== 'All');
+    setCustomCategoryMode(p.category && !existingCats.includes(p.category));
     setImageInputMode(p.image && p.image.startsWith('data:') ? 'file' : 'url');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1247,14 +1252,46 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                                     onChange={(e) => updateMultipleField(idx, 'title', e.target.value)}
                                     className="w-full px-2.5 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-semibold animate-none"
                                   />
-                                  <input
-                                    type="text"
-                                    required
-                                    placeholder="Category *"
-                                    value={item.category}
-                                    onChange={(e) => updateMultipleField(idx, 'category', e.target.value)}
-                                    className="w-full px-2.5 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-semibold animate-none"
-                                  />
+                                  {item.customCategoryMode ? (
+                                    <div className="flex gap-1">
+                                      <input
+                                        type="text"
+                                        required
+                                        autoFocus
+                                        placeholder="New category..."
+                                        value={item.category}
+                                        onChange={(e) => updateMultipleField(idx, 'category', e.target.value)}
+                                        className="flex-1 px-2.5 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-semibold animate-none"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => { updateMultipleField(idx, 'customCategoryMode', false); if (!item.category) updateMultipleField(idx, 'category', ''); }}
+                                        className="px-1.5 py-1 rounded text-[8px] font-bold bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-all shrink-0"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <select
+                                      required
+                                      value={item.category}
+                                      onChange={(e) => {
+                                        if (e.target.value === '__NEW__') {
+                                          updateMultipleField(idx, 'category', '');
+                                          updateMultipleField(idx, 'customCategoryMode', true);
+                                        } else {
+                                          updateMultipleField(idx, 'category', e.target.value);
+                                        }
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-semibold animate-none cursor-pointer"
+                                    >
+                                      <option value="" disabled>Category *</option>
+                                      {uniqueCategories.filter(c => c !== 'All').map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                      ))}
+                                      <option value="__NEW__">＋ New Category...</option>
+                                    </select>
+                                  )}
                                 </div>
                               </td>
                               <td className="p-3">
@@ -1381,14 +1418,46 @@ export default function AdminPanel({ session, onLogout, onBackToStore = () => wi
                         <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
                           Category *
                         </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. Marvel, DC, Motivation"
-                          value={posterCategory}
-                          onChange={(e) => setPosterCategory(e.target.value)}
-                          className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
-                        />
+                        {customCategoryMode ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              required
+                              autoFocus
+                              placeholder="Type new category name..."
+                              value={posterCategory}
+                              onChange={(e) => setPosterCategory(e.target.value)}
+                              className="flex-1 px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => { setCustomCategoryMode(false); if (!posterCategory) setPosterCategory(''); }}
+                              className="px-3 py-2 rounded-xl text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all shrink-0"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <select
+                            required
+                            value={posterCategory}
+                            onChange={(e) => {
+                              if (e.target.value === '__NEW__') {
+                                setPosterCategory('');
+                                setCustomCategoryMode(true);
+                              } else {
+                                setPosterCategory(e.target.value);
+                              }
+                            }}
+                            className="w-full px-4 py-2.5 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-semibold cursor-pointer"
+                          >
+                            <option value="" disabled>Select a category...</option>
+                            {uniqueCategories.filter(c => c !== 'All').map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                            <option value="__NEW__">＋ Add New Category...</option>
+                          </select>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

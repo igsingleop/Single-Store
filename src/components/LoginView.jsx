@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, ArrowRight, ShieldCheck, AlertCircle, Eye, EyeOff, Sparkles, User } from 'lucide-react';
-import { loginWithEmail, registerWithEmail, loginWithGoogle } from '../utils/auth';
+import { Mail, Lock, ArrowRight, ShieldCheck, AlertCircle, Eye, EyeOff, Sparkles, User, KeyRound } from 'lucide-react';
+import { loginWithEmail, registerWithEmail, loginWithGoogle, resetPassword } from '../utils/auth';
 import { getAdmins } from '../utils/db';
 
 // Helper to convert Firebase auth errors into user-friendly messages
@@ -41,9 +41,9 @@ const getFriendlyErrorMessage = (error) => {
 
   // If code wasn't matched but message contains the code pattern
   if (typeof message === 'string') {
-    if (message.includes('auth/invalid-credential') || 
-        message.includes('auth/wrong-password') || 
-        message.includes('auth/user-not-found')) {
+    if (message.includes('auth/invalid-credential') ||
+      message.includes('auth/wrong-password') ||
+      message.includes('auth/user-not-found')) {
       return 'Incorrect email or password. Please try again.';
     }
     if (message.includes('auth/invalid-email')) {
@@ -67,7 +67,7 @@ const getFriendlyErrorMessage = (error) => {
     if (message.includes('auth/network-request-failed')) {
       return 'Network error. Please check your internet connection and try again.';
     }
-    
+
     // Clean up Firebase: Error (auth/xxx) messages into "xxx"
     if (message.startsWith('Firebase: Error (')) {
       const match = message.match(/\(([^)]+)\)/);
@@ -86,10 +86,13 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -152,6 +155,23 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
     }
   };
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setSuccessMsg('');
+    setResetLoading(true);
+    try {
+      await resetPassword(resetEmail || email);
+      setSuccessMsg('Password reset email sent! Check your inbox (and spam folder) for instructions.');
+      setResetEmail('');
+    } catch (error) {
+      console.error(error);
+      setErrorMsg(getFriendlyErrorMessage(error));
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-lg mx-auto px-6 py-12 relative">
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -174,8 +194,8 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
             {mode === 'signin' ? 'Welcome Back.' : 'Join Single Store.'}
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            {mode === 'signin' 
-              ? 'Sign in to access your posters, wishlist, and profile orders' 
+            {mode === 'signin'
+              ? 'Sign in to access your posters, wishlist, and profile orders'
               : 'Create an account to track shipments, save custom sizes, and seed wishlists'}
           </p>
         </div>
@@ -187,11 +207,10 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
               setErrorMsg('');
               setSuccessMsg('');
             }}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 ${
-              mode === 'signin'
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 ${mode === 'signin'
                 ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-zinc-550 hover:text-zinc-700 dark:hover:text-zinc-350'
-            }`}
+              }`}
           >
             Sign In
           </button>
@@ -201,11 +220,10 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
               setErrorMsg('');
               setSuccessMsg('');
             }}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 ${
-              mode === 'signup'
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 ${mode === 'signup'
                 ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-zinc-550 hover:text-zinc-700 dark:hover:text-zinc-350'
-            }`}
+              }`}
           >
             Create Account
           </button>
@@ -236,122 +254,205 @@ export default function LoginView({ setView, onLoginSuccess, onAdminLogin }) {
           )}
         </AnimatePresence>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === 'signup' && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-1.5"
-            >
-              <label className="text-[10px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest block">
-                Full Name
-              </label>
-              <div className="relative flex items-center">
-                <User className="absolute left-3 w-4.5 h-4.5 text-zinc-400" />
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Jane Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all font-medium"
-                />
-              </div>
-            </motion.div>
-          )}
-
-          <div>
-            <label className="text-[10px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest block mb-1.5">
-              Email Address
-            </label>
-            <div className="relative flex items-center">
-              <Mail className="absolute left-3 w-4.5 h-4.5 text-zinc-400" />
-              <input
-                type="email"
-                required
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all font-medium"
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <label className="text-[10px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest block">
-                Password
-              </label>
-            </div>
-            <div className="relative flex items-center">
-              <Lock className="absolute left-3 w-4.5 h-4.5 text-zinc-400" />
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-10 py-3 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all font-medium"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300 transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <motion.button
-            whileHover={{ scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            type="submit"
-            disabled={loading}
-            className={`w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/25 transition-all mt-6 ${
-              loading ? 'opacity-80 cursor-not-allowed' : ''
-            }`}
+        {forgotPasswordMode ? (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            <span>{loading ? 'Processing...' : mode === 'signin' ? 'Sign In' : 'Create Account'}</span>
-            {!loading && <ArrowRight className="w-4 h-4" />}
-          </motion.button>
-        </form>
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-500/15 to-orange-500/15 dark:from-amber-500/10 dark:to-orange-500/10 flex items-center justify-center border border-amber-200/30 dark:border-amber-800/30">
+                <KeyRound className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h3 className="font-outfit text-xl font-bold text-zinc-900 dark:text-white">
+                Reset Your Password
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 max-w-xs mx-auto">
+                Enter the email address associated with your account and we'll send you a link to reset your password.
+              </p>
+            </div>
 
-        <div className="relative flex items-center justify-center my-6">
-          <div className="border-t border-zinc-200/60 dark:border-zinc-800/80 w-full" />
-          <span className="absolute bg-[#eff2f7] dark:bg-[#1b1c20] px-3 text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
-            Or continue with
-          </span>
-        </div>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest block mb-1.5">
+                  Email Address
+                </label>
+                <div className="relative flex items-center">
+                  <Mail className="absolute left-3 w-4.5 h-4.5 text-zinc-400" />
+                  <input
+                    type="email"
+                    required
+                    autoFocus
+                    placeholder="name@example.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all font-medium"
+                  />
+                </div>
+              </div>
 
-        <motion.button
-          whileHover={{ scale: 1.015 }}
-          whileTap={{ scale: 0.985 }}
-          type="button"
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-          className="w-full py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 font-bold text-xs flex items-center justify-center shadow-sm hover:shadow-md transition-all duration-300"
-        >
-          <svg className="w-4 h-4 mr-2.5" viewBox="0 0 24 24">
-            <path
-              fill="#EA4335"
-              d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.53 14.98 1 12 1 7.35 1 3.37 3.68 1.43 7.62l3.83 2.97C6.18 7.37 8.87 5.04 12 5.04z"
-            />
-            <path
-              fill="#4285F4"
-              d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.43c-.28 1.44-1.09 2.67-2.33 3.51l3.63 2.82c2.13-1.97 3.36-4.87 3.36-8.48z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.26 14.25c-.24-.72-.38-1.5-.38-2.3s.14-1.58.38-2.3L1.43 6.68C.52 8.49 0 10.19 0 12s.52 3.51 1.43 5.32l3.83-3.07z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.63-2.82c-1.01.68-2.31 1.09-3.96 1.09-3.13 0-5.82-2.33-6.77-5.55L1.77 15.78C3.71 19.82 7.69 23 12 23z"
-            />
-          </svg>
-          <span>Sign In with Google</span>
-        </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.985 }}
+                type="submit"
+                disabled={resetLoading}
+                className={`w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/25 transition-all mt-6 ${resetLoading ? 'opacity-80 cursor-not-allowed' : ''
+                  }`}
+              >
+                <span>{resetLoading ? 'Sending...' : 'Send Reset Link'}</span>
+                {!resetLoading && <ArrowRight className="w-4 h-4" />}
+              </motion.button>
+            </form>
+
+            <button
+              type="button"
+              onClick={() => {
+                setForgotPasswordMode(false);
+                setErrorMsg('');
+                setSuccessMsg('');
+              }}
+              className="w-full mt-4 py-2.5 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all flex items-center justify-center space-x-1.5"
+            >
+              <ArrowRight className="w-3.5 h-3.5 rotate-180" />
+              <span>Back to Sign In</span>
+            </button>
+          </motion.div>
+        ) : (
+          <>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {mode === 'signup' && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-1.5"
+                >
+                  <label className="text-[10px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest block">
+                    Full Name
+                  </label>
+                  <div className="relative flex items-center">
+                    <User className="absolute left-3 w-4.5 h-4.5 text-zinc-400" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Jane Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all font-medium"
+                    />
+                  </div>
+                </motion.div>
+              )}
+
+              <div>
+                <label className="text-[10px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest block mb-1.5">
+                  Email Address
+                </label>
+                <div className="relative flex items-center">
+                  <Mail className="absolute left-3 w-4.5 h-4.5 text-zinc-400" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-[10px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest block">
+                    Password
+                  </label>
+                </div>
+                <div className="relative flex items-center">
+                  <Lock className="absolute left-3 w-4.5 h-4.5 text-zinc-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-3 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-neo-in focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {mode === 'signin' && (
+                <div className="flex justify-end -mt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotPasswordMode(true);
+                      setResetEmail(email);
+                      setErrorMsg('');
+                      setSuccessMsg('');
+                    }}
+                    className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
+
+              <motion.button
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.985 }}
+                type="submit"
+                disabled={loading}
+                className={`w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center space-x-2 shadow-lg shadow-blue-500/25 transition-all mt-6 ${loading ? 'opacity-80 cursor-not-allowed' : ''
+                  }`}
+              >
+                <span>{loading ? 'Processing...' : mode === 'signin' ? 'Sign In' : 'Create Account'}</span>
+                {!loading && <ArrowRight className="w-4 h-4" />}
+              </motion.button>
+            </form>
+
+            <div className="relative flex items-center justify-center my-6">
+              <div className="border-t border-zinc-200/60 dark:border-zinc-800/80 w-full" />
+              <span className="absolute bg-[#eff2f7] dark:bg-[#1b1c20] px-3 text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+                Or continue with
+              </span>
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.985 }}
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full py-3 rounded-2xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 font-bold text-xs flex items-center justify-center shadow-sm hover:shadow-md transition-all duration-300"
+            >
+              <svg className="w-4 h-4 mr-2.5" viewBox="0 0 24 24">
+                <path
+                  fill="#EA4335"
+                  d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.53 14.98 1 12 1 7.35 1 3.37 3.68 1.43 7.62l3.83 2.97C6.18 7.37 8.87 5.04 12 5.04z"
+                />
+                <path
+                  fill="#4285F4"
+                  d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.43c-.28 1.44-1.09 2.67-2.33 3.51l3.63 2.82c2.13-1.97 3.36-4.87 3.36-8.48z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.26 14.25c-.24-.72-.38-1.5-.38-2.3s.14-1.58.38-2.3L1.43 6.68C.52 8.49 0 10.19 0 12s.52 3.51 1.43 5.32l3.83-3.07z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.63-2.82c-1.01.68-2.31 1.09-3.96 1.09-3.13 0-5.82-2.33-6.77-5.55L1.77 15.78C3.71 19.82 7.69 23 12 23z"
+                />
+              </svg>
+              <span>Sign In with Google</span>
+            </motion.button>
+          </>
+        )}
       </motion.div>
     </div>
   );

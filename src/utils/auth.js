@@ -7,7 +7,8 @@ import {
   GoogleAuthProvider, 
   signOut, 
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -191,6 +192,24 @@ export async function logout() {
   } else {
     mockUser = null;
     notifyListeners(null);
+  }
+}
+
+export async function resetPassword(email) {
+  const emailLower = email.toLowerCase().trim();
+  if (!emailLower) {
+    throw new Error('Please enter your email address.');
+  }
+  if (isFirebaseConfigured && auth) {
+    await sendPasswordResetEmail(auth, emailLower);
+  } else {
+    // Fallback: check if user exists in local storage
+    const users = getFallbackUsers();
+    const matched = users.find(u => u.email === emailLower);
+    if (!matched) {
+      throw new Error('No account found with this email address.');
+    }
+    // In fallback mode, we can't actually send an email, so just simulate success
   }
 }
 
