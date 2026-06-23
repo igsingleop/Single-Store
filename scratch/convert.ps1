@@ -13,6 +13,9 @@ function Save-PngScale($srcImg, $path, $w, $h) {
 
 # Generate sizes
 Save-PngScale $img "c:\Users\Deepak\OneDrive\Desktop\Single Store\public\favicon-32x32.png" 32 32
+Save-PngScale $img "c:\Users\Deepak\OneDrive\Desktop\Single Store\public\favicon-48x48.png" 48 48
+Save-PngScale $img "c:\Users\Deepak\OneDrive\Desktop\Single Store\public\favicon-96x96.png" 96 96
+Save-PngScale $img "c:\Users\Deepak\OneDrive\Desktop\Single Store\public\favicon-144x144.png" 144 144
 Save-PngScale $img "c:\Users\Deepak\OneDrive\Desktop\Single Store\public\apple-touch-icon.png" 180 180
 Save-PngScale $img "c:\Users\Deepak\OneDrive\Desktop\Single Store\public\favicon-192x192.png" 192 192
 
