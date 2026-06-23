@@ -95,6 +95,16 @@ export async function downloadInvoicePDF(order, userDetails = null) {
       preloadImage('/signature.png')
     ]);
 
+    // Create wrapper to hide element off-screen without collapsing layout
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.left = '-9999px';
+    wrapper.style.top = '0px';
+    wrapper.style.width = '720px';
+    wrapper.style.height = 'auto';
+    wrapper.style.zIndex = '-99999';
+    wrapper.style.overflow = 'hidden';
+
     // Create element for PDF generation
     const element = document.createElement('div');
     element.style.padding = '40px';
@@ -102,7 +112,6 @@ export async function downloadInvoicePDF(order, userDetails = null) {
     element.style.color = '#1f2937';
     element.style.backgroundColor = '#ffffff';
     element.style.width = '720px';
-    element.style.margin = '0 auto';
     element.style.boxSizing = 'border-box';
 
     const invoiceId = getOrderInvoiceId(order);
@@ -325,9 +334,17 @@ export async function downloadInvoicePDF(order, userDetails = null) {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
+    wrapper.appendChild(element);
+    document.body.appendChild(wrapper);
+
+    // Wait 400ms for browser to render styles and image layout
+    await new Promise(resolve => setTimeout(resolve, 400));
+
     // Use the correct API chaining order: .set() -> .from() -> .save()
-    // html2pdf automatically handles temporary DOM insertion and clean up offscreen natively.
     await html2pdf().set(opt).from(element).save();
+
+    // Clean up DOM
+    document.body.removeChild(wrapper);
   } catch (error) {
     console.error("Failed to generate and download PDF invoice:", error);
     alert("Could not download invoice PDF: " + error.message);
