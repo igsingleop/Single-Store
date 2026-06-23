@@ -7,7 +7,8 @@ import {
   initDB,
   getCoupons,
   getEstimatedDeliveryDate,
-  getBanners
+  getBanners,
+  defaultBanners
 } from './utils/db';
 import { subscribeAuth, logout } from './utils/auth';
 
@@ -70,7 +71,7 @@ export default function App() {
 
   // Core reactive data states
   const [posters, setPosters] = useState([]);
-  const [banners, setBanners] = useState([]);
+  const [banners, setBanners] = useState(defaultBanners);
   const [cart, setCart] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [appliedCoupon, setAppliedCoupon] = useState(null);

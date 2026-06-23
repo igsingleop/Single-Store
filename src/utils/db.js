@@ -60,19 +60,19 @@ const defaultAdmins = [
   }
 ];
 
-const defaultBanners = [
+export const defaultBanners = [
   {
     id: '1',
-    title: 'Transform Your Space',
-    subtitle: 'Premium Anime & Custom Posters',
-    image: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?q=80&w=1200&auto=format&fit=crop',
+    title: 'Transform Your Wall into Posters',
+    subtitle: 'Premium & Affordable Posters',
+    image: 'https://wallpapercave.com/wp/wp6794318.jpg',
     link: 'shop'
   },
   {
     id: '2',
-    title: 'Exclusive Tamil Art',
-    subtitle: 'Vibrant and Culturally Rooted Designs',
-    image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?q=80&w=1200&auto=format&fit=crop',
+    title: 'Exclusive Game of Thrones Poster Collections',
+    subtitle: 'Posters Are Coming',
+    image: 'https://wallpapercave.com/wp/wp4402745.jpg',
     link: 'shop'
   }
 ];
@@ -704,7 +704,7 @@ export async function getReviews() {
 export async function addReview(review) {
   const reviewId = review.id || (Date.now().toString() + Math.random().toString(36).substring(2, 6));
   const finalReview = { ...review, id: reviewId };
-  
+
   if (isFirebaseConfigured && firestoreDb) {
     try {
       await setDoc(doc(firestoreDb, 'reviews', String(reviewId)), finalReview);
