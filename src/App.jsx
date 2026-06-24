@@ -11,6 +11,7 @@ import {
   defaultBanners
 } from './utils/db';
 import { subscribeAuth, logout } from './utils/auth';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 
 
@@ -738,6 +739,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      <SpeedInsights />
     </div>
   );
 }
