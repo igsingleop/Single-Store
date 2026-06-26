@@ -419,6 +419,8 @@ export default function App() {
         setSearchQuery={handleSearchChange}
         wishlistCount={wishlist.length}
         user={user}
+        posters={posters}
+        onSelectPoster={setSelectedPosterId}
       />
 
       {/* Main Content Area */}
