@@ -16,6 +16,17 @@ export default function Navbar({
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [inputValue, setInputValue] = useState(searchQuery);
+
+  useEffect(() => {
+    setInputValue(searchQuery);
+  }, [searchQuery]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      setSearchQuery(inputValue);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -84,12 +95,16 @@ export default function Navbar({
 
       {/* Search Input - Desktop */}
       <div className="hidden lg:flex items-center relative max-w-xs w-full mx-4">
-        <Search className="absolute left-3 w-4 h-4 text-zinc-400" />
+        <Search 
+          className="absolute left-3 w-4 h-4 text-zinc-400 cursor-pointer hover:text-blue-500 transition-colors" 
+          onClick={() => setSearchQuery(inputValue)}
+        />
         <input
           type="text"
           placeholder="Search posters..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="w-full pl-10 pr-4 py-2 text-sm rounded-full bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all text-zinc-800 dark:text-zinc-100"
         />
       </div>
@@ -101,11 +116,15 @@ export default function Navbar({
           <input
             type="text"
             placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="w-28 sm:w-40 pl-8 pr-2 py-1.5 text-xs rounded-full bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-800 dark:text-zinc-100"
           />
-          <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-zinc-400" />
+          <Search 
+            className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-zinc-400 cursor-pointer hover:text-blue-500 transition-colors" 
+            onClick={() => setSearchQuery(inputValue)}
+          />
         </div>
 
         {/* Theme Switcher Button (Neomorphic) */}

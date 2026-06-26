@@ -41,6 +41,13 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPosterId, setSelectedPosterId] = useState(null);
 
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    if (value.trim() !== '' && currentView !== 'shop') {
+      setView('shop');
+    }
+  };
+
   const handleNavbarSetView = (view) => {
     if (view === 'shop') {
       setShopCategory('All');
@@ -226,6 +233,13 @@ export default function App() {
     localStorage.setItem('SINGLESTORE_WISHLIST', JSON.stringify(wishlist));
   }, [wishlist]);
 
+  // Clear search query when navigating away from shop view
+  useEffect(() => {
+    if (currentView !== 'shop' && searchQuery !== '') {
+      setSearchQuery('');
+    }
+  }, [currentView]);
+
   const handleToggleWishlist = (posterId) => {
     setWishlist(prev => {
       if (prev.includes(posterId)) {
@@ -402,7 +416,7 @@ export default function App() {
         cartCount={cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
         toggleCart={() => setIsCartOpen(!isCartOpen)}
         searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
+        setSearchQuery={handleSearchChange}
         wishlistCount={wishlist.length}
         user={user}
       />
