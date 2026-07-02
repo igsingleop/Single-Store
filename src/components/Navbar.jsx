@@ -170,22 +170,30 @@ export default function Navbar({
       isScrolled ? 'py-2 md:py-2.5 scrolled' : 'py-3.5 md:py-4.5'
     }`}>
       {/* Brand Logo */}
-      <motion.div
+      <motion.a
+        href="/"
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5 }}
         className="flex items-center space-x-2 cursor-pointer"
-        onClick={() => setView('home')}
+        onClick={(e) => {
+          e.preventDefault();
+          setView('home');
+        }}
       >
         <span className="font-outfit text-2xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
           Single Store.
         </span>
-      </motion.div>
+      </motion.a>
 
       {/* Navigation Links - Desktop */}
       <div className="hidden md:flex items-center space-x-8">
-        <button
-          onClick={() => setView('home')}
+        <a
+          href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            setView('home');
+          }}
           className={`font-medium transition-colors ${
             currentView === 'home'
               ? 'text-blue-600 dark:text-blue-400'
@@ -193,9 +201,13 @@ export default function Navbar({
           }`}
         >
           Home
-        </button>
-        <button
-          onClick={() => setView('shop')}
+        </a>
+        <a
+          href="/shop"
+          onClick={(e) => {
+            e.preventDefault();
+            setView('shop');
+          }}
           className={`font-medium transition-colors ${
             currentView === 'shop'
               ? 'text-blue-600 dark:text-blue-400'
@@ -203,9 +215,13 @@ export default function Navbar({
           }`}
         >
           Shop All
-        </button>
-        <button
-          onClick={() => setView('faq')}
+        </a>
+        <a
+          href="/faq"
+          onClick={(e) => {
+            e.preventDefault();
+            setView('faq');
+          }}
           className={`font-medium transition-colors ${
             currentView === 'faq'
               ? 'text-blue-600 dark:text-blue-400'
@@ -213,7 +229,7 @@ export default function Navbar({
           }`}
         >
           FAQs
-        </button>
+        </a>
       </div>
 
       {/* Search Input - Desktop */}
@@ -276,9 +292,13 @@ export default function Navbar({
         </motion.button>
 
         {/* Wishlist Trigger (Neomorphic + Badge) */}
-        <motion.button
+        <motion.a
+          href="/wishlist"
           whileTap={{ scale: 0.95 }}
-          onClick={() => setView(currentView === 'wishlist' ? 'home' : 'wishlist')}
+          onClick={(e) => {
+            e.preventDefault();
+            setView(currentView === 'wishlist' ? 'home' : 'wishlist');
+          }}
           className={`hidden md:flex p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-neo-out hover:shadow-neo-in relative transition-all duration-300 ${
             currentView === 'wishlist' ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-200'
           }`}
@@ -297,7 +317,7 @@ export default function Navbar({
               </motion.span>
             )}
           </AnimatePresence>
-        </motion.button>
+        </motion.a>
 
         {/* Cart Trigger (Neomorphic + Badge) */}
         <motion.button
@@ -322,9 +342,11 @@ export default function Navbar({
         </motion.button>
 
         {/* Profile Trigger (Neomorphic) */}
-        <motion.button
+        <motion.a
+          href={user ? "/account" : "/login"}
           whileTap={{ scale: 0.95 }}
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
             const isAlreadyOnProfile = currentView === 'account' || currentView === 'login';
             setView(isAlreadyOnProfile ? 'home' : (user ? 'account' : 'login'));
           }}
@@ -334,7 +356,7 @@ export default function Navbar({
           aria-label="Profile"
         >
           <User className="w-5 h-5" />
-        </motion.button>
+        </motion.a>
 
         {/* Mobile menu toggle */}
         <motion.button
@@ -355,32 +377,36 @@ export default function Navbar({
             exit={{ opacity: 0, y: -10 }}
             className="absolute top-full left-0 w-full glass-panel border-b p-6 flex flex-col space-y-4 md:hidden shadow-lg"
           >
-            <button
-              onClick={() => { setView('home'); setIsMobileMenuOpen(false); }}
+            <a
+              href="/"
+              onClick={(e) => { e.preventDefault(); setView('home'); setIsMobileMenuOpen(false); }}
               className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 ${
                 currentView === 'home' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-300'
               }`}
             >
               Home
-            </button>
-            <button
-              onClick={() => { setView('shop'); setIsMobileMenuOpen(false); }}
+            </a>
+            <a
+              href="/shop"
+              onClick={(e) => { e.preventDefault(); setView('shop'); setIsMobileMenuOpen(false); }}
               className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 ${
                 currentView === 'shop' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-300'
               }`}
             >
               Shop All
-            </button>
-            <button
-              onClick={() => { setView('faq'); setIsMobileMenuOpen(false); }}
+            </a>
+            <a
+              href="/faq"
+              onClick={(e) => { e.preventDefault(); setView('faq'); setIsMobileMenuOpen(false); }}
               className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 ${
                 currentView === 'faq' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-700 dark:text-zinc-300'
               }`}
             >
               FAQs
-            </button>
-            <button
-              onClick={() => { setView(currentView === 'wishlist' ? 'home' : 'wishlist'); setIsMobileMenuOpen(false); }}
+            </a>
+            <a
+              href="/wishlist"
+              onClick={(e) => { e.preventDefault(); setView(currentView === 'wishlist' ? 'home' : 'wishlist'); setIsMobileMenuOpen(false); }}
               className={`text-left py-2 font-medium border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between ${
                 currentView === 'wishlist' ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'
               }`}
@@ -391,9 +417,11 @@ export default function Navbar({
                   {wishlistCount}
                 </span>
               )}
-            </button>
-            <button
-              onClick={() => {
+            </a>
+            <a
+              href={user ? '/account' : '/login'}
+              onClick={(e) => {
+                e.preventDefault();
                 const isAlreadyOnProfile = currentView === 'account' || currentView === 'login';
                 setView(isAlreadyOnProfile ? 'home' : (user ? 'account' : 'login'));
                 setIsMobileMenuOpen(false);
@@ -403,7 +431,7 @@ export default function Navbar({
               }`}
             >
               {user ? 'My Profile' : 'Login / Account'}
-            </button>
+            </a>
             <div className="flex items-center justify-between py-2.5 border-b border-zinc-100 dark:border-zinc-800">
               <span className="font-medium text-zinc-700 dark:text-zinc-300">Theme</span>
               <button

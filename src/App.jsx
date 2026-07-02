@@ -30,16 +30,122 @@ const AdminPanel = lazy(() => import('./components/admin/AdminPanel'));
 const AccountView = lazy(() => import('./components/AccountView'));
 const HelpFaqView = lazy(() => import('./components/HelpFaqView'));
 
-export default function App() {
-  const [currentView, setView] = useState(() => {
-    const hash = window.location.hash.replace('#', '');
+const getInitialRouteState = () => {
+  if (typeof window === 'undefined') {
+    return { view: 'home', category: 'All', posterId: null, faqCategory: 'all' };
+  }
+  const path = window.location.pathname;
+  const hash = window.location.hash.replace('#', '');
+
+  let view = 'home';
+  let category = 'All';
+  let posterId = null;
+  let faqCategory = 'all';
+
+  if (path === '/shop') {
+    view = 'shop';
+  } else if (path === '/wishlist') {
+    view = 'wishlist';
+  } else if (path === '/checkout') {
+    view = 'checkout';
+  } else if (path === '/login') {
+    view = 'login';
+  } else if (path === '/account') {
+    view = 'account';
+  } else if (path === '/faq') {
+    view = 'faq';
+  } else if (path === '/admin') {
+    view = 'admin';
+  } else if (path.startsWith('/product/')) {
+    const parts = path.split('/');
+    posterId = parts[2] || null;
+    view = 'home';
+  } else if (path.startsWith('/category/')) {
+    const parts = path.split('/');
+    category = decodeURIComponent(parts[2]) || 'All';
+    view = 'shop';
+  } else if (hash) {
     const validViews = ['home', 'shop', 'wishlist', 'checkout', 'login', 'account', 'faq', 'admin'];
-    return validViews.includes(hash) ? hash : 'home';
+    if (validViews.includes(hash)) {
+      view = hash;
+    }
+  }
+  return { view, category, posterId, faqCategory };
+};
+
+export default function App() {
+  const [currentView, setViewState] = useState(() => {
+    const state = getInitialRouteState();
+    return state.view;
   });
-  const [shopCategory, setShopCategory] = useState('All');
-  const [faqCategory, setFaqCategory] = useState('all');
+  const [shopCategory, setShopCategory] = useState(() => {
+    const state = getInitialRouteState();
+    return state.category;
+  });
+  const [faqCategory, setFaqCategory] = useState(() => {
+    const state = getInitialRouteState();
+    return state.faqCategory;
+  });
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPosterId, setSelectedPosterId] = useState(null);
+  const [selectedPosterId, setSelectedPosterId] = useState(() => {
+    const state = getInitialRouteState();
+    return state.posterId;
+  });
+
+  const setView = (view) => {
+    const viewPaths = {
+      home: '/',
+      shop: '/shop',
+      wishlist: '/wishlist',
+      checkout: '/checkout',
+      login: '/login',
+      account: '/account',
+      faq: '/faq',
+      admin: '/admin'
+    };
+    const path = viewPaths[view] || '/';
+    if (typeof window !== 'undefined' && window.location.pathname !== path) {
+      window.history.pushState(null, '', path);
+    }
+    setViewState(view);
+  };
+
+  const handleSelectPoster = (id) => {
+    if (id) {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', `/product/${id}`);
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        const viewPaths = {
+          home: '/',
+          shop: '/shop',
+          wishlist: '/wishlist',
+          checkout: '/checkout',
+          login: '/login',
+          account: '/account',
+          faq: '/faq',
+          admin: '/admin'
+        };
+        const path = viewPaths[currentView] || '/';
+        window.history.pushState(null, '', path);
+      }
+    }
+    setSelectedPosterId(id);
+  };
+
+  const handleSetShopCategory = (category) => {
+    if (category && category !== 'All') {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', `/category/${encodeURIComponent(category)}`);
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', '/shop');
+      }
+    }
+    setShopCategory(category);
+  };
 
   const handleSearchChange = (value) => {
     setSearchQuery(value);
@@ -50,7 +156,7 @@ export default function App() {
 
   const handleNavbarSetView = (view) => {
     if (view === 'shop') {
-      setShopCategory('All');
+      handleSetShopCategory('All');
     }
     setView(view);
   };
@@ -113,6 +219,9 @@ export default function App() {
       await initDB();
       const dbPosters = await getPosters();
       setPosters(dbPosters);
+      if (typeof window !== 'undefined') {
+        window.posters = dbPosters;
+      }
       setCart(getCart());
       const dbCoupons = await getCoupons();
       setCoupons(dbCoupons);
@@ -124,6 +233,9 @@ export default function App() {
     const handleDbUpdate = async () => {
       const dbPosters = await getPosters();
       setPosters(dbPosters);
+      if (typeof window !== 'undefined') {
+        window.posters = dbPosters;
+      }
       setCart(getCart());
       const dbCoupons = await getCoupons();
       setCoupons(dbCoupons);
@@ -178,29 +290,23 @@ export default function App() {
     }
   }, [cart, appliedCoupon]);
 
-  // Synchronize state when URL hash changes
+  // Synchronize state when URL path or hash changes (browser navigation)
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '');
-      const validViews = ['home', 'shop', 'wishlist', 'checkout', 'login', 'account', 'faq', 'admin'];
-      if (validViews.includes(hash)) {
-        setView(hash);
-      } else if (!hash) {
-        setView('home');
-      }
+    const handleNavigationState = () => {
+      const state = getInitialRouteState();
+      setViewState(state.view);
+      setShopCategory(state.category);
+      setFaqCategory(state.faqCategory);
+      setSelectedPosterId(state.posterId);
     };
-    window.addEventListener('hashchange', handleHashChange);
+
+    window.addEventListener('popstate', handleNavigationState);
+    window.addEventListener('hashchange', handleNavigationState);
     return () => {
-      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handleNavigationState);
+      window.removeEventListener('hashchange', handleNavigationState);
     };
   }, []);
-
-  // Synchronize URL hash when currentView state changes
-  useEffect(() => {
-    if (currentView) {
-      window.location.hash = currentView;
-    }
-  }, [currentView]);
 
   // Theme synchronization effect
   useEffect(() => {
@@ -420,7 +526,7 @@ export default function App() {
         wishlistCount={wishlist.length}
         user={user}
         posters={posters}
-        onSelectPoster={setSelectedPosterId}
+        onSelectPoster={handleSelectPoster}
       />
 
       {/* Main Content Area */}
@@ -433,7 +539,7 @@ export default function App() {
         >
           {currentView === 'home' && (
             <>
-              <Hero setView={setView} banners={banners} setShopCategory={setShopCategory} />
+              <Hero setView={setView} banners={banners} setShopCategory={handleSetShopCategory} />
 
               {/* Featured Collection Section */}
               <section className="max-w-7xl mx-auto px-6 py-16">
@@ -461,7 +567,7 @@ export default function App() {
                     <PosterCard
                       key={poster.id}
                       poster={poster}
-                      onSelect={setSelectedPosterId}
+                      onSelect={handleSelectPoster}
                       onAddToCart={handleAddToCart}
                       isWishlisted={wishlist.includes(poster.id)}
                       onToggleWishlist={handleToggleWishlist}
@@ -487,12 +593,12 @@ export default function App() {
             <ShopView
               posters={posters}
               searchQuery={searchQuery}
-              onSelectPoster={setSelectedPosterId}
+              onSelectPoster={handleSelectPoster}
               onAddToCart={handleAddToCart}
               wishlist={wishlist}
               onToggleWishlist={handleToggleWishlist}
               selectedCategory={shopCategory}
-              setSelectedCategory={setShopCategory}
+              setSelectedCategory={handleSetShopCategory}
             />
           )}
 
@@ -501,7 +607,7 @@ export default function App() {
               posters={posters}
               wishlist={wishlist}
               onToggleWishlist={handleToggleWishlist}
-              onSelectPoster={setSelectedPosterId}
+              onSelectPoster={handleSelectPoster}
               onAddToCart={handleAddToCart}
               setView={setView}
             />
@@ -656,7 +762,7 @@ export default function App() {
           <ProductDetailModal
             posterId={selectedPosterId}
             posters={posters}
-            onClose={() => setSelectedPosterId(null)}
+            onClose={() => handleSelectPoster(null)}
             onAddToCart={handleAddToCart}
           />
         )}

@@ -37,13 +37,17 @@ export default function PosterCard({ poster, onSelect, onAddToCart, isWishlisted
   };
 
   return (
-    <motion.div
+    <motion.a
+      href={`/product/${poster.id}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -8 }}
       transition={{ duration: 0.3 }}
-      onClick={() => onSelect(poster.id)}
-      className="group cursor-pointer rounded-2xl p-4 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 shadow-neo-out hover:shadow-neo-in transition-all duration-300 flex flex-col justify-between"
+      onClick={(e) => {
+        e.preventDefault();
+        onSelect(poster.id);
+      }}
+      className="group cursor-pointer rounded-2xl p-4 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 shadow-neo-out hover:shadow-neo-in transition-all duration-300 flex flex-col justify-between block text-left"
     >
       <div>
         {/* Image Container with Zoom */}
@@ -64,6 +68,7 @@ export default function PosterCard({ poster, onSelect, onAddToCart, isWishlisted
           <button
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               if (onToggleWishlist) onToggleWishlist(poster.id);
             }}
             className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-white/20 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 transition-colors shadow-md hover:scale-105"
@@ -129,6 +134,7 @@ export default function PosterCard({ poster, onSelect, onAddToCart, isWishlisted
           whileTap={{ scale: 0.9 }}
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             onAddToCart(poster.id);
           }}
           className="p-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all"
@@ -137,6 +143,6 @@ export default function PosterCard({ poster, onSelect, onAddToCart, isWishlisted
           <ShoppingCart className="w-4.5 h-4.5" />
         </motion.button>
       </div>
-    </motion.div>
+    </motion.a>
   );
 }
