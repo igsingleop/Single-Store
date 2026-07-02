@@ -59,6 +59,11 @@ function startServer(port, dir) {
 
 // 2. Pre-rendering execution flow
 async function run() {
+  if (process.env.VERCEL) {
+    console.log('Vercel environment detected. Skipping prerendering build step.');
+    process.exit(0);
+  }
+
   if (!fs.existsSync(DIST_DIR)) {
     console.error('Error: "dist" folder not found. Make sure to run "vite build" first!');
     process.exit(1);
@@ -74,7 +79,7 @@ async function run() {
   try {
     // Visit home page to fetch dynamic catalog structure from Firebase
     console.log('Navigating to homepage to retrieve catalog data...');
-    await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle' });
+    await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
 
     // Wait for posters list to be loaded into client state
     console.log('Waiting for product data hydration...');
@@ -110,7 +115,7 @@ async function run() {
     for (const p of paths) {
       console.log(`Crawl and Render: ${p}`);
       const targetUrl = `http://localhost:${PORT}${p}`;
-      await page.goto(targetUrl, { waitUntil: 'networkidle' });
+      await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
       // Selector load safeguards
       if (p === '/') {
